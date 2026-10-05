@@ -1,3 +1,4 @@
+import { checkBearerAuth } from "../../../lib/auth";
 import { createMcpHandler } from "mcp-handler";
 import { registerRouterLensTools } from "../../../lib/tools";
 
@@ -16,26 +17,9 @@ const handler = createMcpHandler(
   }
 );
 
-function unauthorized() {
-  return new Response("Unauthorized", {
-    status: 401,
-    headers: {
-      "WWW-Authenticate": 'Bearer realm="RouterLens"'
-    }
-  });
-}
-
 async function withAuth(request: Request) {
-  const expected = process.env.MCP_AUTH_TOKEN;
-  if (!expected) {
-    return new Response("MCP_AUTH_TOKEN is not configured", { status: 503 });
-  }
-
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${expected}`) {
-    return unauthorized();
-  }
-
+  const failure = checkBearerAuth(request, process.env.MCP_AUTH_TOKEN);
+  if (failure) return failure;
   return handler(request);
 }
 
@@ -51,3 +35,4 @@ export async function OPTIONS() {
 }
 
 export { withAuth as GET, withAuth as POST, withAuth as DELETE };
+

@@ -4,7 +4,11 @@
 
 An open-source OpenRouter plugin that combines OpenRouter's official MCP server with a private analytics bridge for account spend, usage analysis, model comparison, cost anomaly detection, and cost optimization.
 
-Current version: **0.3.0 Alpha**
+Current version: **0.3.1 Alpha (authentication compatibility hotfix)**
+
+> The default package temporarily includes only the official OpenRouter MCP. Private account Analytics, Cost Doctor, and key metadata are **not restored** in this release. The self-hosted bridge and its eight tools remain in source, protected by authentication. See [the authentication roadmap](docs/authentication-roadmap.md) before enabling private Analytics.
+
+The capability list below describes the source components. Historical spend and Analytics require a separately authenticated self-hosted bridge; they are not available in the default 0.3.1 package. Remaining credit is supported by the official `get-credits` tool when connected and authorized.
 
 ## What it does
 
@@ -96,7 +100,7 @@ MCP_AUTH_TOKEN=
 Install and build:
 
 ```bash
-npm install
+npm ci
 npm run check
 ```
 
@@ -135,7 +139,8 @@ The repository contains the portable ChatGPT/Codex plugin files:
 The plugin connects to:
 
 1. OpenRouter official MCP: `https://mcp.openrouter.ai/mcp`
-2. RouterLens analytics MCP: your self-hosted endpoint
+
+The RouterLens MCP is intentionally omitted from both default MCP manifests until supported authentication is implemented. Do not add a shared static bearer to these files, remove server authentication, or reinstall the plugin as a substitute for authentication. A private client that supports secure credential storage may connect to its own self-hosted bridge outside the shared package.
 
 ## Roadmap
 
@@ -147,6 +152,7 @@ The plugin connects to:
 - Model comparison
 
 ### Next
+- Restore private Analytics through verified MCP-compatible OAuth, with tenant isolation and regression coverage
 - Hosted multi-user OAuth flow
 - Encrypted per-user OpenRouter credentials
 - Secure key write actions
@@ -159,3 +165,4 @@ The plugin connects to:
 Apache-2.0.
 
 This is an independent open-source project and is not affiliated with or endorsed by OpenRouter.
+

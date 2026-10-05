@@ -9,3 +9,9 @@ dist
 coverage
 
 *.tsbuildinfo
+
+
+.test-build
+
+__pycache__/
+*.pyc

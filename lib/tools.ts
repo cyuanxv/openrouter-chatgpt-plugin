@@ -1,14 +1,15 @@
 import { z } from "zod";
 import {
-  detectCostAnomalies,
-  numberValue,
+  analyticsMetadata,
+  analyzeCostSeries,
+  requireCompleteAnalytics,
+  requiredNumber,
   rankRows,
   shareOf,
-  shouldSumMetric,
   sumField,
   unwrapAnalyticsRows
 } from "./analytics";
-import { publicErrorMessage } from "./errors";
+import { PublicError, publicErrorMessage } from "./errors";
 import { namesOf, selectSupported, unwrapAnalyticsMeta } from "./meta";
 import {
   getAnalyticsMeta,
@@ -19,12 +20,19 @@ import {
   listModels,
   queryAnalytics
 } from "./openrouter";
+import { buildCostAdvice } from "./costAdvice";
+import { buildQueryRecipes } from "./queryRecipes";
+import { metricAggregation, QueryValidationError, validateAnalyticsQuery } from "./queryPlanning";
+import { normalizeKeyMetadata } from "./keyMetadata";
 import { normalizeModel, summarizeEndpoints } from "./modelCompare";
 import {
+  isValidTimeZone,
   resolveCalendarDaysRange,
   resolvePresetRange,
   type RangePreset
 } from "./time";
+
+const TIMEZONE = z.string().refine(isValidTimeZone, "Use a supported IANA timezone name.").default("UTC");
 
 const FILTER_VALUE = z.union([
   z.string(),
@@ -33,6 +41,11 @@ const FILTER_VALUE = z.union([
 ]);
 
 function toolError(error: unknown) {
+  if (error instanceof QueryValidationError) return {
+    isError: true,
+    structuredContent: { validation_errors: error.issues, query_executed: false },
+    content: [{ type: "text" as const, text: error.message }]
+  };
   return {
     isError: true,
     content: [{ type: "text" as const, text: publicErrorMessage(error) }]
@@ -53,6 +66,7 @@ async function spendForPreset(preset: RangePreset, timezone: string) {
     time_range: { start: range.start, end: range.end },
     limit: 100
   });
+  requireCompleteAnalytics(response);
   const rows = unwrapAnalyticsRows(response);
   return {
     preset,
@@ -60,97 +74,6 @@ async function spendForPreset(preset: RangePreset, timezone: string) {
     end: range.end,
     usd: sumField(rows, "total_usage")
   };
-}
-
-function buildOptimizationSignals(
-  row: Record<string, unknown>,
-  totalUsage: number,
-  endpointSummary: any
-) {
-  const total = numberValue(row.tokens_total);
-  const prompt = numberValue(row.tokens_prompt);
-  const completion = numberValue(row.tokens_completion);
-  const reasoning = numberValue(row.reasoning_tokens);
-  const cached = numberValue(row.cached_tokens);
-  const usage = numberValue(row.total_usage);
-  const cacheHitRate =
-    row.cache_hit_rate == null ? null : numberValue(row.cache_hit_rate);
-
-  const signals: Array<{
-    type: string;
-    confidence: "high" | "medium";
-    evidence: string;
-  }> = [];
-
-  const usageShare = shareOf(usage, totalUsage);
-  if (usageShare != null && usageShare >= 0.4) {
-    signals.push({
-      type: "cost_concentration",
-      confidence: "high",
-      evidence: `This model represents ${(usageShare * 100).toFixed(1)}% of spend in the selected period.`
-    });
-  }
-
-  if (prompt >= 500_000 && cacheHitRate != null && cacheHitRate < 0.1) {
-    signals.push({
-      type: "low_cache_reuse",
-      confidence: "medium",
-      evidence: `Prompt volume is ${Math.round(prompt).toLocaleString()} tokens and cache hit rate is ${(cacheHitRate * 100).toFixed(1)}%.`
-    });
-  }
-
-  const completionShare = shareOf(completion, total);
-  if (completionShare != null && completionShare >= 0.55 && completion >= 100_000) {
-    signals.push({
-      type: "output_heavy",
-      confidence: "medium",
-      evidence: `Completion tokens are ${(completionShare * 100).toFixed(1)}% of total tokens.`
-    });
-  }
-
-  const reasoningShare = shareOf(reasoning, total);
-  if (reasoningShare != null && reasoningShare >= 0.25 && reasoning >= 50_000) {
-    signals.push({
-      type: "reasoning_heavy",
-      confidence: "medium",
-      evidence: `Reasoning tokens are ${(reasoningShare * 100).toFixed(1)}% of total tokens.`
-    });
-  }
-
-  const cachedShare = shareOf(cached, prompt);
-  if (cachedShare != null && cachedShare >= 0.25) {
-    signals.push({
-      type: "meaningful_cache_usage",
-      confidence: "high",
-      evidence: `Cached tokens are ${(cachedShare * 100).toFixed(1)}% of prompt tokens. Preserve cache-friendly prompt structure before changing routing.`
-    });
-  }
-
-  const minInput = endpointSummary?.min_prompt_usd_per_million;
-  const maxInput = endpointSummary?.max_prompt_usd_per_million;
-  const minOutput = endpointSummary?.min_completion_usd_per_million;
-  const maxOutput = endpointSummary?.max_completion_usd_per_million;
-
-  const providerSpread =
-    (typeof minInput === "number" &&
-      minInput > 0 &&
-      typeof maxInput === "number" &&
-      maxInput / minInput >= 1.15) ||
-    (typeof minOutput === "number" &&
-      minOutput > 0 &&
-      typeof maxOutput === "number" &&
-      maxOutput / minOutput >= 1.15);
-
-  if (providerSpread) {
-    signals.push({
-      type: "provider_price_spread",
-      confidence: "high",
-      evidence:
-        "Live endpoints for this same model show a material provider price spread. Review routing or :floor before evaluating a model replacement."
-    });
-  }
-
-  return signals;
 }
 
 export function registerRouterLensTools(server: any) {
@@ -161,7 +84,7 @@ export function registerRouterLensTools(server: any) {
       description:
         "Get OpenRouter remaining credit plus today, yesterday, 7-day and 30-day spend. Use for balance or recent account-spend questions. Requires the configured Management Key.",
       inputSchema: {
-        timezone: z.string().default("UTC"),
+        timezone: TIMEZONE,
         include_spend_windows: z.boolean().default(true)
       },
       annotations: {
@@ -180,8 +103,8 @@ export function registerRouterLensTools(server: any) {
       try {
         const creditsResponse = await getCredits();
         const credits = creditsResponse?.data ?? creditsResponse;
-        const totalCredits = numberValue(credits?.total_credits);
-        const lifetimeUsage = numberValue(credits?.total_usage);
+        const totalCredits = requiredNumber(credits?.total_credits);
+        const lifetimeUsage = requiredNumber(credits?.total_usage);
 
         const result: Record<string, unknown> = {
           timezone,
@@ -216,19 +139,22 @@ export function registerRouterLensTools(server: any) {
     {
       title: "Get OpenRouter Analytics schema",
       description:
-        "Get the live OpenRouter Analytics metrics, dimensions, operators and granularities. Use before an unfamiliar analytics query.",
-      inputSchema: {},
+        "Get the live OpenRouter Analytics schema and optional ready-to-run query recipes for spend, API keys, providers and token analysis. Recipes never execute automatically.",
+      inputSchema: { include_query_recipes: z.boolean().default(false) },
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         openWorldHint: false
       }
     },
-    async () => {
+    async ({ include_query_recipes }: { include_query_recipes: boolean }) => {
       try {
         const response = await getAnalyticsMeta();
-        const data = response?.data ?? response;
-        return textResult("Returned the current OpenRouter Analytics schema.", data);
+        const data = unwrapAnalyticsMeta(response);
+        return textResult("Returned the current OpenRouter Analytics schema.", {
+          ...data,
+          ...(include_query_recipes ? { query_recipes: buildQueryRecipes(data) } : {})
+        });
       } catch (error) {
         return toolError(error);
       }
@@ -242,25 +168,16 @@ export function registerRouterLensTools(server: any) {
       description:
         "Query OpenRouter spend, requests, tokens, cache, model, provider, API key, workspace, app, agent or time trends. Supports common time presets and advanced Analytics API fields.",
       inputSchema: {
-        preset: z.enum(["today", "yesterday", "7d", "30d"]).optional(),
-        timezone: z.string().default("UTC"),
-        metrics: z.array(z.string()).min(1).max(20).default(["total_usage"]),
-        dimensions: z.array(z.string()).max(2).optional(),
-        granularity: z.enum(["minute", "hour", "day", "week", "month"]).optional(),
+        preset: z.enum(["today", "yesterday", "7d", "30d"]).default("7d"),
+        timezone: TIMEZONE,
+        metrics: z.array(z.string().min(1).max(128)).min(1).max(20).default(["total_usage"]),
+        dimensions: z.array(z.string().min(1).max(128)).max(2).optional(),
+        granularity: z.string().min(1).max(128).optional(),
         filters: z
           .array(
             z.object({
-              field: z.string(),
-              operator: z.enum([
-                "eq",
-                "neq",
-                "gt",
-                "gte",
-                "lt",
-                "lte",
-                "in",
-                "not_in"
-              ]),
+              field: z.string().min(1).max(128),
+              operator: z.string().min(1).max(128),
               value: FILTER_VALUE,
               include_unset: z.boolean().optional()
             })
@@ -280,6 +197,7 @@ export function registerRouterLensTools(server: any) {
             start: z.string().datetime(),
             end: z.string().datetime()
           })
+          .refine((range) => Date.parse(range.start) < Date.parse(range.end), "time_range.start must be earlier than time_range.end.")
           .optional()
       },
       annotations: {
@@ -290,7 +208,10 @@ export function registerRouterLensTools(server: any) {
     },
     async (input: any) => {
       try {
-        const presetRange = input.preset
+        if (input.time_range && Date.parse(input.time_range.start) >= Date.parse(input.time_range.end)) {
+          throw new PublicError("INVALID_RANGE");
+        }
+        const presetRange = input.preset && !input.time_range
           ? resolvePresetRange(input.preset, input.timezone)
           : undefined;
 
@@ -300,7 +221,7 @@ export function registerRouterLensTools(server: any) {
             ? { start: presetRange.start, end: presetRange.end }
             : undefined);
 
-        const response = await queryAnalytics({
+        const query = {
           metrics: input.metrics,
           dimensions: input.dimensions,
           granularity: input.granularity,
@@ -309,30 +230,38 @@ export function registerRouterLensTools(server: any) {
           group_limit: input.group_limit,
           order_by: input.order_by,
           time_range: range
-        });
-
+        };
+        const schema = unwrapAnalyticsMeta(await getAnalyticsMeta());
+        validateAnalyticsQuery(query, schema);
+        const response = await queryAnalytics(query);
         const rows = unwrapAnalyticsRows(response);
-        const summedMetrics = input.metrics.filter(shouldSumMetric);
-        const totals = Object.fromEntries(
-          summedMetrics.map((metric: string) => [metric, sumField(rows, metric)])
-        );
+        const aggregations = Object.fromEntries(input.metrics.map((metric: string) => [metric, metricAggregation(metric, schema)]));
+        const summedMetrics = input.metrics.filter((metric: string) => aggregations[metric].summed);
+        const totals = Object.fromEntries(summedMetrics.map((metric: string) => [metric, sumField(rows, metric)]));
 
         const result = {
           range: range ?? null,
-          timezone: input.preset ? input.timezone : null,
+          timezone: presetRange ? input.timezone : null,
           metrics: input.metrics,
           dimensions: input.dimensions ?? [],
           granularity: input.granularity ?? null,
           totals,
+          totals_scope: "returned_rows",
+          totals_complete: analyticsMetadata(response)?.truncated === false,
+          truncated: analyticsMetadata(response)?.truncated ?? null,
+          metric_aggregations: aggregations,
           rate_and_performance_metrics_are_not_summed: input.metrics.filter(
-            (metric: string) => !shouldSumMetric(metric)
+            (metric: string) => !aggregations[metric].summed
           ),
+          schema_validated: true,
+          warnings: rows.length === 0 ? ["No matching rows were returned. Check filters and the time range before drawing an account-wide no-usage conclusion."] : [],
+          time_bucket_timezone: input.granularity ? "UTC" : null,
           rows,
-          metadata: response?.data?.metadata ?? response?.metadata ?? null
+          metadata: analyticsMetadata(response)
         };
 
         return textResult(
-          `OpenRouter Analytics returned ${rows.length} row(s).`,
+          `OpenRouter Analytics returned ${rows.length} row(s). Totals cover returned rows${result.totals_complete ? "" : "; completeness is unverified or the result was truncated"}.`,
           result
         );
       } catch (error) {
@@ -346,10 +275,10 @@ export function registerRouterLensTools(server: any) {
     {
       title: "Detect OpenRouter cost anomalies",
       description:
-        "Detect daily OpenRouter spend spikes against a rolling baseline. Use for questions about unexpected or abnormal cost increases.",
+        "Detect spend spikes over completed UTC days against a consecutive-day rolling baseline. Incomplete current-day and non-UTC daily analysis are not supported.",
       inputSchema: {
         days: z.number().int().min(1).max(90).default(30),
-        timezone: z.string().default("UTC"),
+        timezone: TIMEZONE,
         baseline_days: z.number().int().min(3).max(30).default(7),
         ratio_threshold: z.number().min(1).max(10).default(1.5),
         absolute_threshold_usd: z.number().min(0).default(1)
@@ -362,10 +291,13 @@ export function registerRouterLensTools(server: any) {
     },
     async (input: any) => {
       try {
-        const targetRange = resolveCalendarDaysRange(input.days, input.timezone);
+        if (input.timezone !== "UTC") throw new PublicError("NON_UTC_DAILY_BUCKETS");
+        const previousDay = new Date(Date.now() - 86_400_000);
+        const targetRange = resolveCalendarDaysRange(input.days, "UTC", previousDay);
         const queryRange = resolveCalendarDaysRange(
           input.days + input.baseline_days,
-          input.timezone
+          "UTC",
+          previousDay
         );
 
         const response = await queryAnalytics({
@@ -375,17 +307,20 @@ export function registerRouterLensTools(server: any) {
           limit: Math.min(10_000, input.days + input.baseline_days + 10)
         });
 
+        requireCompleteAnalytics(response);
         const rows = unwrapAnalyticsRows(response);
-        const anomalies = detectCostAnomalies(
+        const analysis = analyzeCostSeries(
           rows,
           "total_usage",
           "date__day",
           input.baseline_days,
           input.ratio_threshold,
           input.absolute_threshold_usd,
-          targetRange.startDate
+          targetRange.startDate,
+          targetRange.endDateExclusive
         );
 
+        const { anomalies } = analysis;
         const series = rows.filter(
           (row) => String(row.date__day ?? "").slice(0, 10) >= targetRange.startDate
         );
@@ -393,9 +328,16 @@ export function registerRouterLensTools(server: any) {
         return textResult(
           anomalies.length
             ? `Detected ${anomalies.length} cost anomaly candidate(s).`
-            : "No cost anomaly candidates crossed the configured thresholds.",
+            : analysis.evaluatedDays
+              ? "No cost anomaly candidates crossed the configured thresholds among days with complete consecutive baselines."
+              : "No complete consecutive-day baseline was available; anomaly status is unknown.",
           {
             timezone: input.timezone,
+            time_bucket_timezone: "UTC",
+            baseline_policy: "consecutive returned UTC days; missing buckets are not assumed to be zero",
+            evaluated_days: analysis.evaluatedDays,
+            skipped_days: analysis.skippedDays,
+            current_partial_day_excluded: true,
             analysis_range: targetRange,
             baseline_days: input.baseline_days,
             ratio_threshold: input.ratio_threshold,
@@ -415,10 +357,10 @@ export function registerRouterLensTools(server: any) {
     {
       title: "Analyze OpenRouter cost optimization opportunities",
       description:
-        "Analyze top OpenRouter cost contributors using live usage, token/cache metrics, model catalog prices and same-model provider price spread. Returns evidence and optimization candidates.",
+        "Analyze top OpenRouter cost contributors using live usage, token/cache metrics and optional current catalog/provider prices. Return observed signals, actionable verification steps and data-quality gaps. Savings are not invented or automatically estimated.",
       inputSchema: {
         preset: z.enum(["7d", "30d"]).default("30d"),
-        timezone: z.string().default("UTC"),
+        timezone: TIMEZONE,
         top_models: z.number().int().min(1).max(10).default(5),
         include_provider_evidence: z.boolean().default(true)
       },
@@ -455,9 +397,7 @@ export function registerRouterLensTools(server: any) {
         );
 
         if (!metrics.includes("total_usage")) {
-          throw new Error(
-            "OpenRouter Analytics currently does not expose total_usage for this account/schema."
-          );
+          throw new PublicError("MISSING_SPEND_METRIC");
         }
 
         const usageResponse = await queryAnalytics({
@@ -468,52 +408,71 @@ export function registerRouterLensTools(server: any) {
           order_by: { field: "total_usage", direction: "desc" }
         });
 
+        requireCompleteAnalytics(usageResponse);
         const allRows = unwrapAnalyticsRows(usageResponse);
         const rows = rankRows(allRows, "total_usage", input.top_models);
         const totalUsage = sumField(allRows, "total_usage");
 
-        const modelsResponse = await listModels();
-        const catalog = modelsResponse?.data ?? [];
-        const byId = new Map(
-          catalog.map((model: any) => [model.id, normalizeModel(model)])
-        );
+        let catalog: any[] = [];
+        let catalogAvailable = false;
+        try {
+          const modelsResponse = await listModels();
+          if (Array.isArray(modelsResponse?.data)) {
+            catalog = modelsResponse.data.filter((model: any) => model && typeof model === "object" && typeof model.id === "string" && model.id);
+            catalogAvailable = catalog.length === modelsResponse.data.length;
+          }
+        } catch { /* Preserve verified usage evidence when optional public pricing is unavailable. */ }
+        const byId = new Map(catalog.map((model: any) => [model.id, normalizeModel(model)]));
 
         const contributors = await Promise.all(
           rows.map(async (row) => {
-            const modelId = String(row.model ?? "");
+            if (typeof row.model !== "string" || !row.model) throw new PublicError("INVALID_RESPONSE");
+            const modelId = row.model;
             let providerEvidence: any = null;
+            let providerEvidenceStatus = input.include_provider_evidence ? "unavailable" : "not_requested";
 
             if (input.include_provider_evidence && modelId.includes("/")) {
               try {
                 const endpointsResponse = await getModelEndpoints(modelId);
-                providerEvidence = summarizeEndpoints(
-                  endpointsResponse?.data?.endpoints ?? []
-                );
+                if (Array.isArray(endpointsResponse?.data?.endpoints)) {
+                  providerEvidence = summarizeEndpoints(endpointsResponse.data.endpoints);
+                  providerEvidenceStatus = !providerEvidence.count ? "no_listed_endpoints" : providerEvidence.min_prompt_usd_per_million === null && providerEvidence.min_completion_usd_per_million === null ? "no_pricing_data" : "available";
+                }
               } catch {
                 providerEvidence = null;
               }
             }
 
+            const advice = buildCostAdvice(row, totalUsage, providerEvidence);
+            const safeRow = Object.fromEntries(metrics.map((metric) => {
+              if (metric in advice.metric_evidence) return [metric, advice.metric_evidence[metric]];
+              try { return [metric, requiredNumber(row[metric])]; } catch {
+                (row[metric] == null ? advice.missing_metrics : advice.invalid_metrics).push(metric);
+                return [metric, null];
+              }
+            }));
+            const { signals, ...adviceSummary } = advice;
             return {
-              ...row,
+              ...safeRow,
+              model: modelId,
               spend_share: shareOf(row.total_usage, totalUsage),
               catalog: byId.get(modelId) ?? null,
               provider_evidence: providerEvidence,
-              optimization_signals: buildOptimizationSignals(
-                row,
-                totalUsage,
-                providerEvidence
-              )
+              provider_evidence_status: providerEvidenceStatus,
+              optimization_signals: signals,
+              optimization_advice: adviceSummary
             };
           })
         );
 
         return textResult(
-          `Prepared cost-optimization evidence for the top ${contributors.length} model cost contributor(s).`,
+          `Prepared cost-optimization evidence for the top ${contributors.length} model cost contributor(s).${catalogAvailable ? "" : " Current catalog pricing could not be fully verified; usage evidence is preserved."} Savings have not been estimated.`,
           {
             range,
             timezone: input.timezone,
             metrics_used: metrics,
+            catalog_available: catalogAvailable,
+            pricing_basis: "current_default_list_prices_not_historical_billed_cost",
             total_usage: totalUsage,
             top_contributors_usage: sumField(rows, "total_usage"),
             contributors,
@@ -550,24 +509,10 @@ export function registerRouterLensTools(server: any) {
     async (input: any) => {
       try {
         const response = await listKeys(input);
-        const rawKeys = Array.isArray(response?.data) ? response.data : [];
+        if (!Array.isArray(response?.data)) throw new PublicError("INVALID_RESPONSE");
+        const rawKeys = response.data;
 
-        const keys = rawKeys.map((key: any) => ({
-          hash: key.hash,
-          name: key.name ?? key.label ?? null,
-          disabled: Boolean(key.disabled),
-          limit: key.limit ?? null,
-          limit_remaining: key.limit_remaining ?? null,
-          limit_reset: key.limit_reset ?? null,
-          expires_at: key.expires_at ?? null,
-          usage: numberValue(key.usage),
-          usage_daily: numberValue(key.usage_daily),
-          usage_weekly: numberValue(key.usage_weekly),
-          usage_monthly: numberValue(key.usage_monthly),
-          byok_usage: numberValue(key.byok_usage),
-          include_byok_in_limit: Boolean(key.include_byok_in_limit),
-          workspace_id: key.workspace_id ?? null
-        }));
+        const keys = rawKeys.map(normalizeKeyMetadata);
 
         return textResult(
           `Found ${keys.length} OpenRouter API key(s). Plaintext secrets are never returned.`,
@@ -651,14 +596,16 @@ export function registerRouterLensTools(server: any) {
     async () =>
       textResult(
         hasManagementKey()
-          ? "RouterLens Management Key is configured."
+          ? "RouterLens Management Key is configured; upstream access has not been verified."
           : "RouterLens is running, but account analytics needs OPENROUTER_MANAGEMENT_KEY.",
         {
           management_key_configured: hasManagementKey(),
-          account_analytics_available: hasManagementKey(),
+          account_analytics_available: null,
+          connectivity_verified: false,
           mode: "self-hosted-single-tenant-alpha",
-          version: "0.3.0"
+          version: "0.3.1"
         }
       )
   );
 }
+

@@ -1,4 +1,4 @@
-import { dollarsPerMillion, numberValue } from "./analytics";
+import { dollarsPerMillion, nonnegativePrice } from "./analytics";
 
 export function normalizeModel(model: any) {
   return {
@@ -15,7 +15,7 @@ export function normalizeModel(model: any) {
     cached_prompt_usd_per_million: dollarsPerMillion(
       model.pricing?.input_cache_read ?? model.pricing?.prompt_cache_hit
     ),
-    request_price: numberValue(model.pricing?.request),
+    request_price: nonnegativePrice(model.pricing?.request),
     max_completion_tokens: model.top_provider?.max_completion_tokens ?? null
   };
 }
@@ -29,6 +29,7 @@ export function summarizeEndpoints(endpoints: any[]) {
     cache_read_usd_per_million: dollarsPerMillion(
       endpoint?.pricing?.input_cache_read ?? endpoint?.pricing?.prompt_cache_hit
     ),
+    request_price: nonnegativePrice(endpoint?.pricing?.request),
     context_length: endpoint?.context_length ?? null,
     max_completion_tokens: endpoint?.max_completion_tokens ?? null,
     supports_implicit_caching: endpoint?.supports_implicit_caching ?? null,
@@ -59,3 +60,4 @@ export function summarizeEndpoints(endpoints: any[]) {
     endpoints: normalized
   };
 }
+

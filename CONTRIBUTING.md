@@ -5,9 +5,9 @@ Contributions are welcome.
 ## Development
 
 1. Install Node.js 20+.
-2. Run `npm install`.
-3. Copy `.env.example` to a local environment file and provide your own test credentials.
-4. Run `npm run check` before opening a pull request.
+2. Run `npm ci`.
+3. Run `npm run check` before opening a pull request. Offline tests use synthetic fixtures and require no OpenRouter credentials or network calls.
+4. For separately authorized live testing only, configure credentials through the host's secure environment controls. Never put real credentials in fixtures, output, or public code.
 
 ## Design principles
 
@@ -26,3 +26,4 @@ Describe:
 - API changes
 - tests or validation performed
 - security impact
+

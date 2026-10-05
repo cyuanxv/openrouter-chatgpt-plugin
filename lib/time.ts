@@ -1,6 +1,18 @@
+import { PublicError } from "./errors";
+
 export type RangePreset = "today" | "yesterday" | "7d" | "30d";
 
+export function isValidTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date(0));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function partsInZone(date: Date, timeZone: string) {
+  if (!isValidTimeZone(timeZone)) throw new PublicError("INVALID_TIMEZONE");
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone,
     year: "numeric",
@@ -29,7 +41,7 @@ function offsetAt(date: Date, timeZone: string): number {
 
 export function zonedLocalToUtc(localIso: string, timeZone: string): Date {
   const naive = new Date(`${localIso}Z`);
-  if (Number.isNaN(naive.getTime())) throw new Error(`Invalid local datetime: ${localIso}`);
+  if (Number.isNaN(naive.getTime())) throw new PublicError("INVALID_LOCAL_TIME");
 
   let utcMs = naive.getTime() - offsetAt(naive, timeZone);
   const corrected = new Date(utcMs);
@@ -40,6 +52,29 @@ export function zonedLocalToUtc(localIso: string, timeZone: string): Date {
 export function dateStringInZone(date: Date, timeZone: string): string {
   const p = partsInZone(date, timeZone);
   return `${p.year}-${p.month}-${p.day}`;
+}
+
+/** First instant of a local date, including days whose midnight is skipped by DST. */
+export function startOfDayUtc(dateString: string, timeZone: string): Date {
+  if (!isValidTimeZone(timeZone)) throw new PublicError("INVALID_TIMEZONE");
+  const nominal = Date.parse(`${dateString}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString) || !Number.isFinite(nominal) || new Date(nominal).toISOString().slice(0, 10) !== dateString) {
+    throw new PublicError("INVALID_LOCAL_TIME");
+  }
+  const formatter = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+  const localDate = (instant: number) => {
+    const parts = Object.fromEntries(formatter.formatToParts(new Date(instant)).map((part) => [part.type, part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+  let low = nominal - 48 * 3_600_000;
+  let high = nominal + 48 * 3_600_000;
+  while (high - low > 1) {
+    const middle = Math.floor((high + low) / 2);
+    if (localDate(middle) < dateString) low = middle;
+    else high = middle;
+  }
+  // A date skipped by a timezone transition has the same boundary as its next date.
+  return new Date(high);
 }
 
 export function addCalendarDays(dateString: string, days: number): string {
@@ -53,15 +88,15 @@ export function resolveCalendarDaysRange(
   timeZone = "UTC",
   now = new Date()
 ): { start: string; end: string; startDate: string; endDateExclusive: string; timeZone: string } {
-  if (!Number.isInteger(days) || days < 1) throw new Error("days must be a positive integer");
+  if (!Number.isInteger(days) || days < 1) throw new PublicError("INVALID_DAYS");
 
   const today = dateStringInZone(now, timeZone);
   const startDate = addCalendarDays(today, -(days - 1));
   const endDateExclusive = addCalendarDays(today, 1);
 
   return {
-    start: zonedLocalToUtc(`${startDate}T00:00:00`, timeZone).toISOString(),
-    end: zonedLocalToUtc(`${endDateExclusive}T00:00:00`, timeZone).toISOString(),
+    start: startOfDayUtc(startDate, timeZone).toISOString(),
+    end: startOfDayUtc(endDateExclusive, timeZone).toISOString(),
     startDate,
     endDateExclusive,
     timeZone
@@ -96,11 +131,12 @@ export function resolvePresetRange(
   }
 
   return {
-    start: zonedLocalToUtc(`${startDate}T00:00:00`, timeZone).toISOString(),
-    end: zonedLocalToUtc(`${endDateExclusive}T00:00:00`, timeZone).toISOString(),
+    start: startOfDayUtc(startDate, timeZone).toISOString(),
+    end: startOfDayUtc(endDateExclusive, timeZone).toISOString(),
     startDate,
     endDateExclusive,
     label: preset,
     timeZone
   };
 }
+
