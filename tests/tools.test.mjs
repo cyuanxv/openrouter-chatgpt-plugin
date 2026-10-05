@@ -230,3 +230,14 @@ test('Cost Doctor preserves complete usage analysis when optional public catalog
   assert.ok(!contributor.optimization_signals.some((signal) => signal.type === 'low_cache_reuse'));
   assert.doesNotMatch(JSON.stringify(result), /synthetic-private-upstream-diagnostic|"invalid"/);
 });
+
+test('model comparison estimates only an explicitly supplied hypothetical workload and calls no generation API', async (t) => {
+  const requests = mockAccount(t, [{ data: [{ id: 'synthetic/a', name: 'A', context_length: 100_000, pricing: { prompt: '0.000001', completion: '0.000002', request: '0' }, top_provider: { max_completion_tokens: 10_000 } }, { id: 'synthetic/b', name: 'B', context_length: 100_000, pricing: { prompt: '0.000003', completion: '0.000004' } }] }]);
+  const result = await invoke('compare_models', { model_ids: ['synthetic/a', 'synthetic/b'], workload: { requests: 1000, prompt_tokens_per_request: 1000, completion_tokens_per_request: 500 } });
+  assert.equal(result.structuredContent.models[0].workload_estimate.estimated_total_usd, 2);
+  assert.equal(result.structuredContent.models[1].workload_estimate.estimated_total_usd, null);
+  assert.equal(requests.length, 1);
+  assert.equal(new URL(requests[0].url).pathname, '/api/v1/models');
+  assert.equal(requests[0].options.body, undefined);
+  assert.equal(requests[0].options.headers.Authorization, undefined);
+});

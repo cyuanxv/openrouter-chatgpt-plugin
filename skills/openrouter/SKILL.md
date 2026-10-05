@@ -81,7 +81,7 @@ For named model comparison:
 1. Use official model and provider tools for live evidence. Use RouterLens `compare_models` only when that tool is securely connected.
 2. Use official OpenRouter benchmark/ranking tools for quality or task-fit evidence.
 3. Separate factual API data from recommendation judgment.
-4. If the user provides their actual usage mix, estimate cost under each candidate model.
+4. If the user provides a concrete text-token workload, the optional compare_models workload input can compare hypothetical current-list-rate costs without running models. Do not invent token counts or request volume. Keep unknown-price/context/modality limitations and excluded fees/tiers visible; do not present the scenario as an actual bill, realized savings, or proof of quality equivalence.
 
 ## API keys
 

@@ -20,7 +20,7 @@ Finds top model cost contributors and combines live token/cache metrics, catalog
 Returns key metadata, usage counters, limits, status, expiration, and hash. No plaintext secret.
 
 ## compare_models
-Returns normalized model price, context, modalities, supported parameters, and optional provider endpoint summaries.
+Returns normalized model price, context, modalities, supported parameters, and optional provider endpoint summaries. An optional user-supplied text workload (requests and per-request prompt/completion/cached-prompt tokens) produces hypothetical list-rate arithmetic only. Cached tokens are part of prompt tokens; billed reasoning belongs in completion tokens. Separate components avoid double counting. Missing applicable prices, known non-text/context/output constraints, invalid quantities, and unrepresentable arithmetic return no total estimate. Assumptions explicitly exclude unmodeled charges and conditional tiers; no generation is run and no actual bill, savings or quality equivalence is claimed.
 
 ## routerlens_status
 Returns configuration metadata only. account_analytics_available is null and connectivity_verified is false because environment presence does not prove upstream connectivity. Never returns credential values.

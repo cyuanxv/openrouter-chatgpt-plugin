@@ -129,7 +129,9 @@ export function detectCostAnomalies(
 
 export function nonnegativePrice(value: unknown): number | null {
   if ((typeof value !== "number" && typeof value !== "string") || (typeof value === "string" && value.trim() === "")) return null;
+  if (typeof value === "string" && !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) return null;
   const n = Number(value);
+  if (typeof value === "string" && n === 0 && /[1-9]/.test(value.trim().split(/e/i)[0])) return null;
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 

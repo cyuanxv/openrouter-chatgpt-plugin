@@ -20,6 +20,7 @@ import {
   listModels,
   queryAnalytics
 } from "./openrouter";
+import { estimateTextWorkload } from "./workloadEstimate";
 import { buildCostAdvice } from "./costAdvice";
 import { buildQueryRecipes } from "./queryRecipes";
 import { metricAggregation, QueryValidationError, validateAnalyticsQuery } from "./queryPlanning";
@@ -532,10 +533,16 @@ export function registerRouterLensTools(server: any) {
     {
       title: "Compare OpenRouter models",
       description:
-        "Compare specific OpenRouter model IDs using live prices, context windows, modalities, supported parameters and optional provider endpoint details. Use the official OpenRouter MCP for benchmark/ranking evidence.",
+        "Compare OpenRouter model IDs using live catalog prices, context and optional provider evidence. If the user supplies a text-token workload, calculate an explicitly hypothetical cost scenario without running a generation. Missing prices or known context/modality violations prevent an estimate. Use official tools for quality evidence.",
       inputSchema: {
         model_ids: z.array(z.string().min(3)).min(2).max(8),
-        include_endpoints: z.boolean().default(false)
+        include_endpoints: z.boolean().default(false),
+        workload: z.object({
+          requests: z.number().int().min(1).max(1_000_000_000).describe("User-supplied assumed request count; no requests will be executed."),
+          prompt_tokens_per_request: z.number().int().min(0).max(1_000_000_000).describe("Total assumed prompt tokens per request, including the cached portion."),
+          completion_tokens_per_request: z.number().int().min(0).max(1_000_000_000).describe("All assumed billable completion tokens, including reasoning where billed as completion."),
+          cached_prompt_tokens_per_request: z.number().int().min(0).max(1_000_000_000).default(0).describe("Assumed cached subset of prompt tokens; cache eligibility is not verified.")
+        }).refine((value) => value.cached_prompt_tokens_per_request <= value.prompt_tokens_per_request, "Cached prompt tokens must be part of prompt tokens.").optional()
       },
       annotations: {
         readOnlyHint: true,
@@ -559,6 +566,8 @@ export function registerRouterLensTools(server: any) {
               ...normalizeModel(raw)
             };
 
+            if (input.workload) normalized.workload_estimate = estimateTextWorkload(normalized, input.workload);
+
             if (input.include_endpoints) {
               const endpoints = await getModelEndpoints(id);
               normalized.provider_summary = summarizeEndpoints(
@@ -572,7 +581,7 @@ export function registerRouterLensTools(server: any) {
 
         return textResult(
           `Compared ${models.filter((model: any) => model.found).length} of ${input.model_ids.length} requested model(s).`,
-          { models }
+          { models, ...(input.workload ? { workload_estimation: "Hypothetical text-token scenario only; no generation was run and no actual savings or quality equivalence is claimed." } : {}) }
         );
       } catch (error) {
         return toolError(error);

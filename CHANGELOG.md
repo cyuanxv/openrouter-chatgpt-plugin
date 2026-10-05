@@ -2,6 +2,8 @@
 
 ## 0.3.1 (unreleased source patch)
 
+- Add optional hypothetical text-workload arithmetic to model comparison, with explicit pricing assumptions, unknown-price and known-limit gates, and no inference calls.
+
 - Make Cost Doctor evidence actionable with verification steps, explicit data-quality gaps and unavailable-price handling. Unknown per-request fees remain null; no savings amount or quality equivalence is invented.
 
 - Add optional schema-adapted analysis recipes through the existing metadata tool, with explicit unavailable capabilities and no automatic query execution.
