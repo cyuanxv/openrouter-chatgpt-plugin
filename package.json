@@ -1,0 +1,26 @@
+{
+  "name": "routerlens-openrouter-mcp",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Private OpenRouter analytics and cost-optimization MCP used by the RouterLens ChatGPT/Codex plugin.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run build"
+  },
+  "dependencies": {
+    "mcp-handler": "^1.0.5",
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.0"
+  }
+}

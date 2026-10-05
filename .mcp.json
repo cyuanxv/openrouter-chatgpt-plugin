@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "openrouter": {
+      "type": "streamable-http",
+      "url": "https://mcp.openrouter.ai/mcp",
+      "headers": {}
+    },
+    "openrouter-analytics": {
+      "type": "streamable-http",
+      "url": "https://openrouter-analytics-mcp-three.vercel.app/api/mcp",
+      "headers": {}
+    }
+  }
+}

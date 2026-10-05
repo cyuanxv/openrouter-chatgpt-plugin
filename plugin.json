@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "openrouter-mcp",
+  "version": "0.3.0",
+  "description": "Use OpenRouter from ChatGPT and Codex for live model discovery, account spend analytics, cost optimization, provider comparison, API-key metadata, generations, and documentation.",
+  "license": "Apache-2.0",
+  "author": { "name": "Andy" },
+  "keywords": ["openrouter", "llm", "analytics", "cost", "models", "mcp"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "OpenRouter",
+        "shortDescription": "Models, spend analytics, and cost optimization",
+        "longDescription": "Use OpenRouter's official MCP server for live models, pricing, providers, benchmarks, generations and documentation, plus RouterLens for private account spend, usage trends, token analysis, API-key metadata, anomaly detection and cost optimization.",
+        "developerName": "Andy",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive"],
+        "defaultPrompt": [
+          "How much did I spend on OpenRouter yesterday, and what drove the cost?",
+          "Analyze my last 30 days of OpenRouter usage and find cost optimization opportunities.",
+          "Compare these OpenRouter models by live price, context, providers, and benchmark evidence."
+        ]
+      }
+    }
+  }
+}
