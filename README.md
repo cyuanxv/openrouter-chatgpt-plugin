@@ -1,6 +1,8 @@
-# OpenRouter for ChatGPT & Codex
+# OpenRouter ChatGPT Plugin
 
-An open-source ChatGPT/Codex plugin that combines OpenRouter's official MCP server with a private analytics bridge for account spend, usage analysis, model comparison, cost anomaly detection, and cost optimization.
+**Analytics, Cost Optimization & MCP Tools for ChatGPT and Codex.**
+
+An open-source OpenRouter plugin that combines OpenRouter's official MCP server with a private analytics bridge for account spend, usage analysis, model comparison, cost anomaly detection, and cost optimization.
 
 Current version: **0.3.0 Alpha**
 
