@@ -1,5 +1,7 @@
 # Tool Contracts
 
+Tool registration now accepts a complete explicit client, allowing the same callbacks to run with a verified request's account client. The deployed single-tenant bridge remains the default; see [HTTP integration candidate](http-auth-integration.md) for the synthetic HTTP evidence and remaining production gates.
+
 ## get_account_summary
 Inputs: `timezone`, `include_spend_windows`.
 Returns purchased credits, lifetime usage, remaining credit, and optional today/yesterday/7D/30D spend windows. Missing or malformed financial values are errors, not zero. Spend windows require untruncated upstream data.
@@ -24,4 +26,3 @@ Returns normalized model price, context, modalities, supported parameters, and o
 
 ## routerlens_status
 Returns configuration metadata only. account_analytics_available is null and connectivity_verified is false because environment presence does not prove upstream connectivity. Never returns credential values.
-

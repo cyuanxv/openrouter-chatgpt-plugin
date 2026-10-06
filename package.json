@@ -13,6 +13,7 @@
     "test:transport": "node scripts/smoke-mcp.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.26.0",
     "jose": "6.2.12",
     "mcp-handler": "^1.0.5",
     "next": "^16.0.0",

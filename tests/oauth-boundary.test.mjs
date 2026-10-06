@@ -113,10 +113,7 @@ test('expired principals and repository failures fail closed without diagnostic 
   await assert.rejects(boundary.authorize(principal, 'credits:read', repository), (error) => error.code === 'invalid_token');
 });
 
-test('OAuth foundation is not connected to production routes or plugin manifests', () => {
-  const route = readFileSync(new URL('../app/api/mcp/route.ts', import.meta.url), 'utf8');
-  assert.match(route, /checkBearerAuth/);
-  assert.doesNotMatch(route, /createOfflineOAuthBoundary|hosted\/oauthBoundary/);
+test('default plugin manifests do not activate private hosted Analytics', () => {
   for (const name of ['mcp.json', '.mcp.json']) {
     const config = JSON.parse(readFileSync(new URL(`../${name}`, import.meta.url), 'utf8'));
     assert.deepEqual(Object.keys(config.mcpServers), ['openrouter']);

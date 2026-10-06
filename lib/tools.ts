@@ -60,9 +60,9 @@ function textResult(text: string, structuredContent?: Record<string, unknown>) {
   };
 }
 
-async function spendForPreset(preset: RangePreset, timezone: string) {
+async function spendForPreset(preset: RangePreset, timezone: string, query: typeof queryAnalytics) {
   const range = resolvePresetRange(preset, timezone);
-  const response = await queryAnalytics({
+  const response = await query({
     metrics: ["total_usage"],
     time_range: { start: range.start, end: range.end },
     limit: 100
@@ -77,7 +77,16 @@ async function spendForPreset(preset: RangePreset, timezone: string) {
   };
 }
 
-export function registerRouterLensTools(server: any) {
+export type RouterLensToolClient = Pick<typeof import("./openrouter"), "getAnalyticsMeta" | "getCredits" | "getModelEndpoints" | "listKeys" | "listModels" | "queryAnalytics"> & {
+  status: () => { management_key_configured: boolean | null; mode: string; authentication_verified?: boolean };
+};
+const singleTenantClient: RouterLensToolClient = {
+  getAnalyticsMeta, getCredits, getModelEndpoints, listKeys, listModels, queryAnalytics,
+  status: () => ({ management_key_configured: hasManagementKey(), mode: "self-hosted-single-tenant-alpha" })
+};
+
+export function registerRouterLensTools(server: any, client: RouterLensToolClient = singleTenantClient) {
+  const { getAnalyticsMeta, getCredits, getModelEndpoints, listKeys, listModels, queryAnalytics } = client;
   server.registerTool(
     "get_account_summary",
     {
@@ -117,7 +126,7 @@ export function registerRouterLensTools(server: any) {
         if (include_spend_windows) {
           const windows = await Promise.all(
             (["today", "yesterday", "7d", "30d"] as RangePreset[]).map((preset) =>
-              spendForPreset(preset, timezone)
+              spendForPreset(preset, timezone, queryAnalytics)
             )
           );
           result.spend_windows = Object.fromEntries(
@@ -602,19 +611,21 @@ export function registerRouterLensTools(server: any) {
         openWorldHint: false
       }
     },
-    async () =>
-      textResult(
-        hasManagementKey()
-          ? "RouterLens Management Key is configured; upstream access has not been verified."
-          : "RouterLens is running, but account analytics needs OPENROUTER_MANAGEMENT_KEY.",
+    async () => {
+      const status = client.status();
+      return textResult(
+        status.authentication_verified
+          ? "RouterLens request identity is verified; account binding and upstream access are checked when an account tool runs."
+          : status.management_key_configured
+            ? "RouterLens Management Key is configured; upstream access has not been verified."
+            : "RouterLens is running, but account analytics needs OPENROUTER_MANAGEMENT_KEY.",
         {
-          management_key_configured: hasManagementKey(),
+          ...status,
           account_analytics_available: null,
           connectivity_verified: false,
-          mode: "self-hosted-single-tenant-alpha",
           version: "0.3.1"
         }
-      )
+      );
+    }
   );
 }
-

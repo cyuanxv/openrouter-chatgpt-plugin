@@ -38,7 +38,7 @@ After verification, derive the user identity from trusted claims. Do not accept 
 
 ## Deployment gate
 
-This patch does not register an OAuth client, create credentials, provision a database, change plugin permissions, publish a plugin release, push source, or deploy. Those operations require the appropriate verified access and authorization. Until then, private Analytics remains explicitly unfinished.
+Reviewed source through commit 41fd6a5 is in draft PR #1 and has been deployed to a new credential-free Vercel service. It fails closed for private MCP requests. The subsequent [HTTP integration candidate](http-auth-integration.md) needs separate review before deployment. No OAuth client, production credential store or private Analytics connection has been created. Provider setup, persistent access, plugin publication and further deployment still require their applicable authorization and acceptance checks.
 
 ## Primary references (checked 2026-10-05)
 

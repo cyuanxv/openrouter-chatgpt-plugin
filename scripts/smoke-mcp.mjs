@@ -15,9 +15,10 @@ const port = reserve.address().port;
 await new Promise((resolve) => reserve.close(resolve));
 const base = `http://127.0.0.1:${port}`;
 const token = 'synthetic-smoke-only-not-a-real-credential';
-async function start(configured) {
+async function start(configured, mode) {
   const env = { PATH: process.env.PATH, NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1', NODE_OPTIONS: `--require=${JSON.stringify(fileURLToPath(new URL('./smoke-deny-upstream.cjs', import.meta.url)))}`, OPENROUTER_MANAGEMENT_KEY: 'synthetic-smoke-only-placeholder' };
   if (configured) env.MCP_AUTH_TOKEN = token;
+  if (mode !== undefined) env.MCP_AUTH_MODE = mode;
   const child = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', String(port)], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
   // Do not surface raw server diagnostics; the environment is synthetic anyway.
   child.stdout.resume();
@@ -47,6 +48,13 @@ async function rpc(id, method, params, session) {
 let child;
 try {
   child = await start(true);
+  const head = await fetch(`${base}/api/mcp`, { method: 'HEAD', headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) });
+  assert.equal(head.status, 405);
+  assert.equal(head.headers.get('cache-control'), 'no-store');
+  const malformed = await fetch(`${base}/api/mcp`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: '{', signal: AbortSignal.timeout(5000) });
+  assert.equal(malformed.status, 400);
+  assert.equal((await malformed.json()).error.code, -32700);
+  assert.equal(malformed.headers.get('cache-control'), 'no-store');
   for (const headers of [{}, { authorization: 'Bearer wrong' }]) {
     const response = await fetch(`${base}/api/mcp`, { headers, signal: AbortSignal.timeout(5000) });
     assert.equal(response.status, 401);
@@ -64,6 +72,17 @@ try {
   assert.equal(status.body.result.structuredContent.version, '0.3.1');
   assert.doesNotMatch(JSON.stringify(status.body), /synthetic-smoke-only/);
   console.log('PASS: production-build HTTP auth 401, MCP initialize, eight read-only tools, safe status');
+} finally { if (child) await stopOwnedChild(child); }
+
+child = undefined;
+try {
+  child = await start(true, 'oauth');
+  for (const path of ['/api/mcp', '/.well-known/oauth-protected-resource/api/mcp']) {
+    const response = await fetch(`${base}${path}`, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) });
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+  }
+  console.log('PASS: selecting unconfigured OAuth rejects both static credentials and discovery');
 } finally { if (child) await stopOwnedChild(child); }
 child = undefined;
 try {

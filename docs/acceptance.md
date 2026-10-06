@@ -33,10 +33,10 @@ The transport smoke uses a clean synthetic environment, blocks non-loopback fetc
 
 ## Blocking live release gates
 
-- A permitted GitHub write path and reviewed source submission; the previous integration write returned 403
+- Review and release decisions beyond the existing [draft source PR](https://github.com/cyuanxv/openrouter-chatgpt-plugin/pull/1). Reviewed source through commit 41fd6a5 has been deployed to a new credential-free Vercel service; it rejects private MCP requests with 503 until authentication is configured
 - Explicit release/deployment authorization and confirmation of the intended plugin's current release
 - Selected OAuth issuer/project, fixed MCP resource URL, approved clients and application scopes
-- Real consent/PKCE/discovery/session integration and protected-resource endpoints
+- Real consent/PKCE/discovery/session integration. The next HTTP integration candidate exercises protected-resource responses, JWT checks and tenant-scoped tool calls with synthetic data, but is not enabled with a real provider
 - Tenant-isolated encrypted credential storage and disconnect/delete-credential behavior
 - A production transactional credential adapter with revision checks and no global-key fallback
 - Remote JWKS trust/rotation/SSRF protections and real host acceptance
