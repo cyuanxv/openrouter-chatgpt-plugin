@@ -1,20 +1,31 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "openrouter-mcp",
-  "version": "0.3.0",
-  "description": "Use OpenRouter from ChatGPT and Codex for live model discovery, account spend analytics, cost optimization, provider comparison, API-key metadata, generations, and documentation.",
+  "version": "0.3.1",
+  "description": "Use OpenRouter for live model discovery, pricing, providers, benchmarks, generations, and documentation. Private RouterLens analytics is temporarily unavailable in the default package pending secure authentication.",
   "license": "Apache-2.0",
-  "author": { "name": "Andy" },
-  "keywords": ["openrouter", "llm", "analytics", "cost", "models", "mcp"],
+  "author": {
+    "name": "Andy"
+  },
+  "keywords": [
+    "openrouter",
+    "llm",
+    "analytics",
+    "cost",
+    "models",
+    "mcp"
+  ],
   "extensions": {
     "com.openai": {
       "interface": {
         "displayName": "OpenRouter",
-        "shortDescription": "Models, spend analytics, and cost optimization",
-        "longDescription": "Use OpenRouter's official MCP server for live models, pricing, providers, benchmarks, generations and documentation, plus RouterLens for private account spend, usage trends, token analysis, API-key metadata, anomaly detection and cost optimization.",
+        "shortDescription": "Models, pricing, and providers",
+        "longDescription": "Use OpenRouter's official MCP for live models, pricing, providers, benchmarks, generations, and documentation. The 0.3.1 hotfix temporarily excludes private RouterLens account analytics until supported secure authentication is available. Self-hosted analytics source remains in the repository.",
         "developerName": "Andy",
         "category": "Developer Tools",
-        "capabilities": ["Interactive"],
+        "capabilities": [
+          "Interactive"
+        ],
         "defaultPrompt": [
           "How much did I spend on OpenRouter yesterday, and what drove the cost?",
           "Analyze my last 30 days of OpenRouter usage and find cost optimization opportunities.",

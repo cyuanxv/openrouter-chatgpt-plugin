@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "outDir": ".test-build",
+    "rootDir": ".",
+    "resolveJsonModule": true
+  },
+  "include": [
+    "lib/**/*.ts",
+    "app/api/health/route.ts",
+    "app/api/mcp/route.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".test-build"
+  ]
+}

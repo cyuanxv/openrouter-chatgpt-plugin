@@ -1,4 +1,4 @@
-import { OpenRouterError } from "./errors";
+import { OpenRouterError, PublicError } from "./errors";
 
 const BASE_URL = "https://openrouter.ai/api/v1";
 
@@ -12,7 +12,7 @@ type RequestOptions = {
 function getCredential(management: boolean): string | undefined {
   return management
     ? process.env.OPENROUTER_MANAGEMENT_KEY
-    : process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_MANAGEMENT_KEY;
+    : undefined;
 }
 
 export function hasManagementKey(): boolean {
@@ -27,9 +27,7 @@ export async function openRouterRequest<T>(
   const credential = getCredential(management);
 
   if (management && !credential) {
-    throw new Error(
-      "This capability requires OPENROUTER_MANAGEMENT_KEY on the RouterLens server."
-    );
+    throw new PublicError("MISSING_MANAGEMENT_KEY");
   }
 
   const url = new URL(`${BASE_URL}${path}`);
@@ -45,25 +43,24 @@ export async function openRouterRequest<T>(
     method: options.method ?? "GET",
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    cache: "no-store"
+    cache: "no-store",
+    redirect: "error",
+    signal: AbortSignal.timeout(20_000)
   });
 
-  const raw = await response.text();
-  let parsed: unknown = null;
-  if (raw) {
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      parsed = raw;
-    }
+  if (!response.ok) {
+    // Never retain or return upstream error bodies, which may contain private diagnostics.
+    throw new OpenRouterError(response.status);
   }
 
-  if (!response.ok) {
-    throw new OpenRouterError(
-      `OpenRouter HTTP ${response.status}`,
-      response.status,
-      parsed
-    );
+  let parsed: unknown;
+  try {
+    parsed = await response.json();
+  } catch {
+    throw new PublicError("INVALID_RESPONSE");
+  }
+  if (parsed === null || typeof parsed !== "object") {
+    throw new PublicError("INVALID_RESPONSE");
   }
 
   return parsed as T;
@@ -123,7 +120,7 @@ export async function listModels(
 export async function getModelEndpoints(modelId: string) {
   const [author, ...slugParts] = modelId.split("/");
   if (!author || slugParts.length === 0) {
-    throw new Error("model_id must look like author/model-slug");
+    throw new PublicError("INVALID_MODEL_ID");
   }
 
   const slug = slugParts.join("/");
@@ -131,3 +128,4 @@ export async function getModelEndpoints(modelId: string) {
     `/models/${encodeURIComponent(author)}/${encodeURIComponent(slug)}/endpoints`
   );
 }
+
