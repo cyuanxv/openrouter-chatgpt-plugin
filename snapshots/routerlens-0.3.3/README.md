@@ -1,15 +1,25 @@
-# RouterLens 0.3.3 source-preservation snapshot
+# RouterLens 0.3.4 analytics-integrity candidate
 
-This directory preserves a sanitized, portable source snapshot of the reviewed RouterLens local-day anomaly candidate. It is additive: it does not replace this repository's existing Next.js application, overwrite the earlier v0.3.1 review branch, or claim that either pull request is merged.
+Unpublished candidate based on the sanitized 0.3.3 source snapshot at commit `5cb60f63a390ec48d007807dd1361228a5c2a00f`. The historical `snapshots/routerlens-0.3.3` directory is retained on this isolated development branch to keep the patch reviewable. The repository root application is not the candidate build target.
 
 ## Release status
 
-- The private production service remains **0.3.2**.
-- The **0.3.3 candidate is not published**. Its source reports `0.3.3-candidate.1` deliberately.
-- The earlier frozen private candidate passed **107 synthetic tests**, including 19 independent review tests and 240 integer-cent oracle cases, plus build and artifact validation.
-- The sanitized snapshot was separately verified with its own placeholder configuration: locked offline dependency installation, build, **107/107 synthetic tests**, and artifact validation all passed with exit code 0. This establishes the snapshot's independent checkout workflow; it is not a production deployment or live-account acceptance.
-- A separate formal-release retest did not establish a final result after its wait operation was cancelled. It has not been resumed here.
-- This GitHub preservation change does not deploy the service, update the connected plugin, change access, generate credentials, or run paid inference.
+- This branch is **0.3.4-candidate.1**, not a production release or plugin update.
+- All work here uses synthetic responses. No account query, credential generation, paid inference or deployment was performed.
+- Build, **126/126 synthetic tests**, and artifact validation passed on 2026-10-08 with Node.js 22+. These are cloud offline checks, not live-account acceptance or independent human review.
+- Installed locked dependencies were reused from the prior validated sanitized snapshot; a new clean dependency install was not run for this patch.
+
+## Fixed data-integrity gap
+
+UTC-day-aligned queries previously bypassed row-count consistency validation. A response with one returned row and `metadata: { truncated: false, row_count: 2 }` could be accepted as complete, while hourly reconstruction already rejected this contradiction. This affected usage totals, account spend windows and optimization evidence.
+
+Contract source (checked 2026-10-08): OpenRouter's [official Analytics Query reference, Response Fields](https://github.com/OpenRouterTeam/skills/blob/main/skills/openrouter-analytics-query/SKILL.md#response-fields) defines `data.metadata.row_count` as "Number of rows returned" and `truncated` as whether results were capped at the limit. Therefore a valid partial response retains `row_count === returned rows`; this field is not a pre-limit matching-total count. The candidate tests both a valid partial response and a contradictory partial response. The [official endpoint reference](https://openrouter.ai/docs/api/api-reference/beta-analytics/query-analytics) additionally documents the query limit and nested response envelope.
+
+A shared envelope validator now runs before every exact-range query returns and before every completeness assertion. It validates row shape, metadata shape, optional truncation type, and optional nonnegative safe-integer row counts against returned rows. Matching numeric-string row counts remain supported. Invalid evidence returns a sanitized error before totals, ranking, or optional provider lookups.
+
+Missing metadata or null/missing truncation still means unknown. Explicit truncation remains partial. An empty result does not establish account-wide zero usage. This patch does not add retries, pagination, credentials, tools, or inferred time-bucket coverage. It does not claim that a count match alone proves upstream completeness.
+
+The 19 new tests cover nested/flat envelopes, contradictory and invalid counts, malformed metadata, zero rows, complete/partial/unknown distinctions, and regression paths through usage, spend-window and optimization tools. The previous 107 tests still pass.
 
 ## Included functionality
 
@@ -34,6 +44,6 @@ No real owner binding, private Site hostname or project ID, runtime environment 
 - `tests/`: synthetic tests; Worker tests disable real network access
 - `scripts/`: build and artifact validation helpers
 
-Requires **Node.js 22 or newer** (the locked Miniflare 4 test runtime requires it). For an independent new checkout, use `npm ci --ignore-scripts`, `npm run build`, `npm test`, and `npm run validate`. Tests never require a real Management Key or paid generation. These commands were run independently for this sanitized snapshot on 2026-10-08. All completed with exit code 0. Worker tests explicitly disable outbound network access; other tests use injected synthetic clients and do not require real account access.
+Requires **Node.js 22 or newer** (the locked Miniflare 4 test runtime requires it). For an independent new checkout, use `npm ci --ignore-scripts`, `npm run build`, `npm test`, and `npm run validate`. Tests never require a real Management Key or paid generation. For this candidate, build, tests and artifact validation completed with exit code 0; the clean-install command is provided for reproduction but was not repeated. Worker tests explicitly disable outbound network access; other tests use injected synthetic clients and do not require real account access.
 
 License: Apache-2.0. This is independent of and not endorsed by OpenRouter.

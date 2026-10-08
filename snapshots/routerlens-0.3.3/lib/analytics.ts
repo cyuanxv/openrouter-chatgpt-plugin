@@ -25,7 +25,31 @@ export function analyticsMetadata(response: any): Record<string, unknown> | null
   return metadata !== null && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : null;
 }
 
+/** Validate completeness evidence before callers total or rank returned rows.
+ * Missing metadata remains unknown; a contradictory count is never a total.
+ * This does not infer sparse time-bucket coverage or invent pagination.
+ */
+export function validateAnalyticsEnvelope(response: any): void {
+  const rows = unwrapAnalyticsRows(response);
+  const rawMetadata = response?.data?.metadata ?? response?.metadata;
+  if (rawMetadata != null && (typeof rawMetadata !== "object" || Array.isArray(rawMetadata))) {
+    throw new PublicError("INVALID_RESPONSE");
+  }
+  const metadata = analyticsMetadata(response);
+  if (!metadata) return;
+  if (metadata.truncated != null && typeof metadata.truncated !== "boolean") {
+    throw new PublicError("INVALID_RESPONSE");
+  }
+  if (Object.hasOwn(metadata, "row_count")) {
+    const count = requiredNumber(metadata.row_count);
+    if (!Number.isSafeInteger(count) || count < 0 || count !== rows.length) {
+      throw new PublicError("INVALID_RESPONSE");
+    }
+  }
+}
+
 export function requireCompleteAnalytics(response: any): void {
+  validateAnalyticsEnvelope(response);
   if (analyticsMetadata(response)?.truncated !== false) throw new PublicError("INCOMPLETE_ANALYTICS");
 }
 

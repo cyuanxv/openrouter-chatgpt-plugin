@@ -1,4 +1,4 @@
-import { analyticsMetadata, requiredNumber, requireCompleteAnalytics, unwrapAnalyticsRows } from "./analytics";
+import { analyticsMetadata, validateAnalyticsEnvelope, requiredNumber, requireCompleteAnalytics, unwrapAnalyticsRows } from "./analytics";
 import { PublicError } from "./errors";
 import type { AnalyticsQuery } from "./openrouter";
 
@@ -85,6 +85,7 @@ export async function queryExactRange(
     const response = await run(input);
     // Do not hide unresolved-key/filter warnings or echo upstream diagnostics.
     if ((response?.data?.warnings?.length || response?.warnings?.length)) throw new PublicError("ANALYTICS_WARNINGS");
+    validateAnalyticsEnvelope(response);
     return response;
   };
   if (!needsHourlyReconstruction(query)) return checkedRun(query);

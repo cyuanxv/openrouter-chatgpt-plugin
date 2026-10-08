@@ -1,7 +1,8 @@
 {
-  "snapshot": "0.3.3-candidate.1",
-  "production_service_status": "0.3.2 unchanged",
-  "verification": "Sanitized snapshot: offline locked install, build, 107/107 synthetic tests and artifact validation passed; exit code 0. No deployment or live-account acceptance.",
+  "snapshot": "0.3.4-candidate.1",
+  "base_commit": "5cb60f63a390ec48d007807dd1361228a5c2a00f",
+  "production_service_status": "unchanged by this candidate",
+  "verification": "Build, 126/126 synthetic tests and artifact validation passed; no deployment or live-account acceptance. Locked dependencies reused.",
   "files": [
     {
       "path": ".gitignore",
@@ -17,11 +18,11 @@
     },
     {
       "path": "README.md",
-      "sha256": "0a277e687cd59807ff1076bb66c2852f7ca97144cf96f55cd70d733cf8584b84"
+      "sha256": "2abc4223e83dd501d9bf782aa7b85511416bf88ca75813e899a6a6e2194924f2"
     },
     {
       "path": "lib/analytics.ts",
-      "sha256": "98e78295e8f5214420bae38f91331087e499adfe143a65cd37f9adb4dea94c6a"
+      "sha256": "b3d3722cfe2c7e0bab4517f744722642ce571ca967c1e9538e5fc4d15e2e4859"
     },
     {
       "path": "lib/auth.ts",
@@ -45,7 +46,7 @@
     },
     {
       "path": "lib/exactRange.ts",
-      "sha256": "7bec00f25ee8192186fd762fa58371b755ce0c7d8e3936f23697a94c25c968a6"
+      "sha256": "3727ef495a29fc508f33fffaf1048c8297cd32f4f577242459ce5f1f1b5cdb92"
     },
     {
       "path": "lib/hosted/oauthBoundary.ts",
@@ -93,7 +94,7 @@
     },
     {
       "path": "lib/tools.ts",
-      "sha256": "65ddb5abeb00d2a687056a951dea4b4d87eb9b3c6bcba4806cf79d306ccc6978"
+      "sha256": "084df841d5ee55c97ec1d6ec60e9b39f0d242d887f62a62b17f4564f17c16b90"
     },
     {
       "path": "lib/workloadEstimate.ts",
@@ -118,6 +119,10 @@
     {
       "path": "scripts/validate-artifact.mjs",
       "sha256": "39d9df53ac2461962466d5965c5f4d06f08024ceca40605952d8b753b88d41fd"
+    },
+    {
+      "path": "tests/analytics-integrity.test.mjs",
+      "sha256": "f185635d3d7fdcd69a0decf2fb0691f23fc3e9e7c58b54bdde9e1603a1aa1f73"
     },
     {
       "path": "tests/exact-range.test.mjs",
