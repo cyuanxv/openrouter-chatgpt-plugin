@@ -6,6 +6,10 @@ An open-source OpenRouter plugin that combines OpenRouter's official MCP server 
 
 Current version: **0.3.0 Alpha**
 
+## Reviewed source snapshot
+
+A standalone [RouterLens 0.3.3 source snapshot](snapshots/routerlens-0.3.3/README.md) preserves the reviewed local-calendar anomaly work with sanitized placeholders and its own install/build/test workflow. The private production service remains 0.3.2; this additive source-preservation change does not publish 0.3.3, replace the root application, or merge the earlier [v0.3.1 review PR](https://github.com/cyuanxv/openrouter-chatgpt-plugin/pull/1).
+
 ## What it does
 
 ### Account
@@ -159,3 +163,4 @@ The plugin connects to:
 Apache-2.0.
 
 This is an independent open-source project and is not affiliated with or endorsed by OpenRouter.
+
