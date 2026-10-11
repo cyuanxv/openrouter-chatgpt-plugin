@@ -25,6 +25,7 @@ export function makeReadClient(key: string | undefined, transport: typeof fetch 
     finally { void reader.cancel().catch(()=>{}); }
   }
   return Object.freeze({
+    getGeneration:(id:string)=>call('/generation',{private:true,query:{id}}),
     getCredits:()=>call('/credits',{private:true}),
     getAnalyticsMeta:()=>call('/analytics/meta',{private:true}),
     queryAnalytics:(query:AnalyticsQuery)=>call('/analytics/query',{private:true,body:query}),

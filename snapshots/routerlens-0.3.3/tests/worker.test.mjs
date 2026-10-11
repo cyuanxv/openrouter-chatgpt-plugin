@@ -11,11 +11,11 @@ async function runtime(t,key){
 function message(name,args={}){return {jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}};}
 async function rpc(mf,body,headers=ownerHeaders){return mf.dispatchFetch(base+'/mcp',{method:'POST',headers:{'content-type':'application/json',accept:'application/json, text/event-stream','mcp-protocol-version':'2025-03-26',...headers},body:typeof body==='string'?body:JSON.stringify(body)});}
 
-test('Worker discovery has eight tools and contains no account/configuration secrets',async t=>{
+test('Worker discovery has twenty tools and contains no account/configuration secrets',async t=>{
  const {mf}=await runtime(t,false);
  const list=await rpc(mf,{jsonrpc:'2.0',id:1,method:'tools/list'},{});
- assert.equal(list.status,200);const json=await list.json();assert.equal(json.result.tools.length,8);
- assert.doesNotMatch(JSON.stringify(json),/synthetic-key|example-owner-marker|total_credits/);
+ assert.equal(list.status,200);const json=await list.json();assert.equal(json.result.tools.length,20);
+ assert.doesNotMatch(JSON.stringify(json),/synthetic-key|linaghenbernadette|total_credits/);
  const init=await rpc(mf,{jsonrpc:'2.0',id:2,method:'initialize',params:{protocolVersion:'2025-03-26',capabilities:{},clientInfo:{name:'synthetic',version:'0'}}},{});
  assert.equal(init.status,200);
 });
@@ -24,7 +24,7 @@ test('Worker rejects anonymous, service-only, and wrong-owner calls before upstr
  for(const headers of [{},{'OAI-Sites-Authorization':'Bearer synthetic-service'},{...ownerHeaders,'oai-authenticated-user-email':'other@example.test'},{'oai-authenticated-user-email':ownerHeaders['oai-authenticated-user-email']}])assert.equal((await rpc(mf,message('get_account_summary'),headers)).status,403);
  const noKey=await rpc(mf,message('get_account_summary'));assert.equal(noKey.status,503);assert.equal(noKey.headers.get('cache-control'),'no-store');
  const status=await rpc(mf,message('routerlens_status'));assert.equal(status.status,200);assert.equal((await status.json()).result.structuredContent.management_key_configured,false);
- const page=await mf.dispatchFetch(base,{headers:ownerHeaders});assert.equal(page.status,200);assert.match(await page.text(),/等待配置服务密钥/);
+ const page=await mf.dispatchFetch(base,{headers:ownerHeaders});assert.equal(page.status,200);assert.match(await page.text(),/账户尚未连接/);
  assert.equal((await mf.dispatchFetch(base)).status,403);
 });
 test('Worker owner credits and exact Beijing interval use only the fixed read allowlist',async t=>{
@@ -56,4 +56,14 @@ test('Worker cannot follow upstream redirects or expose a secret through failed 
  mock.get('https://openrouter.ai').intercept({path:'/api/v1/credits',method:'GET'}).reply(302,'',{headers:{location:'https://attacker.example.test/leak'}});
  const r=await rpc(mf,message('get_account_summary',{include_spend_windows:false}));const json=await r.json();assert.equal(json.result.isError,true);assert.doesNotMatch(JSON.stringify(json),/attacker|synthetic-key/);
  mock.assertNoPendingInterceptors();
+});
+
+test('Browser API shares owner gate and operations without requiring MCP OAuth route',async t=>{
+ const {mf}=await runtime(t,false);
+ const request=(headers,body=message('routerlens_status'))=>mf.dispatchFetch(base+'/api/operations',{method:'POST',headers:{'content-type':'application/json',accept:'application/json, text/event-stream',...headers},body:JSON.stringify(body)});
+ assert.equal((await request({})).status,403);
+ assert.equal((await request({...ownerHeaders,origin:'https://attacker.example.test'})).status,403);
+ const response=await request({...ownerHeaders,origin:base});assert.equal(response.status,200);assert.equal((await response.json()).result.structuredContent.version,'0.4.0');
+ assert.equal((await request(ownerHeaders,message('list_call_records'))).status,503);
+ const page=await mf.dispatchFetch(base,{headers:ownerHeaders});assert.match(page.headers.get('content-security-policy'),/script-src 'nonce-/);assert.match(await page.text(),/fetch\('\/api\/operations'/);
 });
