@@ -1,3 +1,4 @@
+import { registerRouting, RoutingError } from './routing';
 import { z } from 'zod';
 import { registerRouterLensTools, type RouterLensToolClient } from './tools';
 import { Store, type DB } from './storage';
@@ -13,7 +14,7 @@ const model=z.string().regex(/^[A-Za-z0-9_.:-]+\/[A-Za-z0-9_./:-]+$/).max(160);
 const finite=z.number().finite().nonnegative();
 const common={timezone:zone,end_date:date.optional()};
 const ro={readOnlyHint:true,destructiveHint:false,openWorldHint:false};
-function errorResult(error:any){return {isError:true,content:[{type:'text',text:error instanceof z.ZodError?'Invalid input. Check dates, identifiers and numeric bounds.':error?.message==='STORAGE_UNAVAILABLE'?'Persistent storage is unavailable. No record was saved.':(error instanceof PublicError||error instanceof OpenRouterError)?publicErrorMessage(error):'Operation failed. No successful result is inferred.'}]};}
+function errorResult(error:any){return {isError:true,content:[{type:'text',text:error instanceof RoutingError?error.message:error instanceof z.ZodError?'Invalid input. Check dates, identifiers and numeric bounds.':error?.message==='STORAGE_UNAVAILABLE'?'Persistent storage is unavailable. No record was saved.':(error instanceof PublicError||error instanceof OpenRouterError)?publicErrorMessage(error):'Operation failed. No successful result is inferred.'}]};}
 export function completedRange(days:number,timezone:string,endDate?:string,now=new Date()){
  const today=dateStringInZone(now,timezone),end=endDate??today;
  date.parse(end);if(end>today)throw new PublicError('INVALID_RANGE');
@@ -109,6 +110,7 @@ export function createOperations(client:RouterLensToolClient,db?:DB,now:()=>Date
  },true);
  add('get_cost_experiment','Compare matched cases by owner-reviewed quality, actual/manual costs and latency. Includes unmatched cases and budget status; never performs a production switch.',{experiment_id:id},async(i:any)=>{const ex=await store.experiment(i.experiment_id);if(!ex)throw new Error('NOT_FOUND');return summarizeExperiment(ex);});
  add('list_cost_experiments','List saved experiment plans.',{},async()=>({experiments:await store.experiments()}));
+ registerRouting(add,client,db);
  return {tools,async call(name:string,args:unknown){const t=tools.get(name);if(!t)return {isError:true,content:[{type:'text',text:'Unknown operation.'}]};try{const data=await t.run(z.object(t.inputSchema).strict().parse(args));return {content:[{type:'text',text:JSON.stringify(data)}],structuredContent:data};}catch(e){return errorResult(e);}}};
 }
 export function registerOperations(server:any,ops:ReturnType<typeof createOperations>){for(const t of ops.tools.values())server.registerTool(t.name,{title:t.name,description:t.description,inputSchema:t.inputSchema,annotations:t.annotations},(i:any)=>ops.call(t.name,i));}
