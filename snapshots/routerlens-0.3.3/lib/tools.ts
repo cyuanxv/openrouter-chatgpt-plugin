@@ -81,6 +81,7 @@ async function spendForPreset(preset: RangePreset, timezone: string, query: type
 }
 
 export type RouterLensToolClient = Pick<typeof import("./openrouter"), "getAnalyticsMeta" | "getCredits" | "getModelEndpoints" | "listKeys" | "listModels" | "queryAnalytics"> & {
+  getGeneration?: (id: string) => Promise<any>;
   status: () => { management_key_configured: boolean | null; mode: string; authentication_verified?: boolean };
 };
 const singleTenantClient: RouterLensToolClient = {
@@ -626,7 +627,7 @@ export function registerRouterLensTools(server: any, client: RouterLensToolClien
           ...status,
           account_analytics_available: null,
           connectivity_verified: false,
-          version: "0.3.4-candidate.1"
+          version: "0.4.0"
         }
       );
     }

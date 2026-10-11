@@ -1,8 +1,8 @@
 {
+  "d1": "DB",
+  "r2": null,
   "project_id": "REPLACE_WITH_YOUR_PRIVATE_SITE_PROJECT_ID",
   "capabilities": [
     "mcp"
-  ],
-  "d1": null,
-  "r2": null
+  ]
 }

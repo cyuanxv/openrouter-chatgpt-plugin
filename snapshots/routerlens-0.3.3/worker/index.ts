@@ -4,12 +4,14 @@ import { JSONRPCMessageSchema } from '@modelcontextprotocol/sdk/types.js';
 import { registerRouterLensTools } from '../lib/tools';
 import { makeReadClient } from './upstream';
 import { page } from './page';
+import { createOperations, registerOperations } from '../lib/operations';
+import type { DB } from '../lib/storage';
 
-// PLACEHOLDER ONLY: replace for your own deployment behind a trusted identity dispatcher.
-// The platform must authenticate and overwrite these headers; never trust public client headers.
+// PLACEHOLDER ONLY: configure your owner behind a trusted identity dispatcher.
+// The platform must authenticate and overwrite headers; never trust public client headers.
 const OWNER_EMAIL = 'owner@example.invalid';
 const SITE_ORIGIN = 'https://routerlens.example.invalid';
-type Env = { OPENROUTER_MANAGEMENT_KEY?: string };
+type Env = { OPENROUTER_MANAGEMENT_KEY?: string; DB?: DB };
 const noStore = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'};
 const reply = (status:number,error:string) => Response.json({error},{status,headers:noStore});
 const owner = (request:Request) => Boolean(request.headers.get('oai-authenticated-user-id')?.trim()) && request.headers.get('oai-authenticated-user-email')?.trim().toLowerCase() === OWNER_EMAIL;
@@ -37,11 +39,16 @@ export default {
       if(url.pathname==='/'){
         if(request.method!=='GET')return reply(405,'method_not_allowed');
         if(!owner(request))return reply(403,'owner_required');
-        return new Response(page(Boolean(env.OPENROUTER_MANAGEMENT_KEY)),{headers:{...noStore,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors https://chatgpt.com"}});
+        const nonce=crypto.randomUUID();
+        return new Response(page(Boolean(env.OPENROUTER_MANAGEMENT_KEY),nonce),{headers:{...noStore,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':`default-src 'none'; script-src 'nonce-${nonce}'; connect-src 'self'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'self'; frame-ancestors https://chatgpt.com`}});
       }
-      if(url.pathname!=='/mcp')return reply(404,'not_found');
+      // Browser cookies authenticate the Site route; /mcp uses platform OAuth.
+      // Both routes share the same operation and owner authorization below.
+      const browserApi=url.pathname==='/api/operations';
+      if(url.pathname!=='/mcp'&&!browserApi)return reply(404,'not_found');
+      if(browserApi&&!owner(request))return reply(403,'owner_required');
       if(request.method!=='POST')return reply(405,'method_not_allowed');
-      const origin=request.headers.get('origin');if(origin&&origin!==SITE_ORIGIN&&origin!=='https://chatgpt.com')return reply(403,'origin_not_allowed');
+      const origin=request.headers.get('origin');if(origin&&origin!==SITE_ORIGIN&&(browserApi||origin!=='https://chatgpt.com'))return reply(403,'origin_not_allowed');
       if(request.headers.get('content-type')?.split(';')[0].trim().toLowerCase()!=='application/json')return reply(415,'json_required');
       let parsed:any;
       try{parsed=await body(request);}catch{return Response.json({jsonrpc:'2.0',id:null,error:{code:-32600,message:'Invalid or oversized MCP request.'}},{status:400,headers:noStore});}
@@ -51,10 +58,12 @@ export default {
       const calls=messages.filter(message=>message.method==='tools/call');
       if(calls.length&&!owner(request))return reply(403,'owner_required');
       if(calls.some(message=>message.params?.name!=='routerlens_status'&&message.params?.name!=='compare_models')&&!env.OPENROUTER_MANAGEMENT_KEY)return reply(503,'management_key_not_configured');
-      const server=new McpServer({name:'RouterLens Private Billing',version:'0.1.1'});
+      const server=new McpServer({name:'RouterLens Private Billing',version:'0.4.0'});
       const transport=new WebStandardStreamableHTTPServerTransport({sessionIdGenerator:undefined,enableJsonResponse:true});
       // The explicit client prevents the original module's environment fallback.
-      registerRouterLensTools(server,makeReadClient(env.OPENROUTER_MANAGEMENT_KEY));
+      const client=makeReadClient(env.OPENROUTER_MANAGEMENT_KEY);
+      registerRouterLensTools(server,client);
+      registerOperations(server,createOperations(client,env.DB));
       await server.connect(transport);
       try {
         const response=await transport.handleRequest(request,{parsedBody:parsed});

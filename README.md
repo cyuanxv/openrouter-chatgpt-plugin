@@ -4,13 +4,13 @@
 
 An open-source OpenRouter plugin that combines OpenRouter's official MCP server with a private analytics bridge for account spend, usage analysis, model comparison, cost anomaly detection, and cost optimization.
 
-Version status (verified 2026-10-11): **private RouterLens service 0.3.4**, **public Worker candidate 0.3.4-candidate.1**, and **legacy root application 0.3.0 Alpha**. These are separate release surfaces.
+Version status (2026-10-11): **RouterLens personal operations 0.4.0**, with a sanitized public Worker candidate and a separate **legacy root application 0.3.0 Alpha**.
 
 ## Reviewed source snapshot
 
-The standalone [RouterLens Worker candidate](snapshots/routerlens-0.3.3/README.md) contains the local-calendar anomaly and analytics-integrity fixes. The historical directory name is retained; use its own install/build/test workflow, not the repository root application.
+The standalone [RouterLens Worker candidate](snapshots/routerlens-0.3.3/README.md) adds request details, spend investigations, persistent reports and experiment comparisons. The historical directory name remains; use its own install/build/test workflow.
 
-The private service 0.3.4 was deployed on 2026-10-09 from source `355e6bbf293c628b5f97a2eaf02ef593d0b3faea`. A read-only source audit on 2026-10-11 confirmed that the analytics-integrity logic and tests match public candidate `56eddac4e2362ea355f590922126b4b8cbf68428`. Public placeholders remain unconfigured for deployment. This maintenance update changes the public candidate only; it does not deploy a service, update the installed plugin, merge this branch, or merge the earlier [v0.3.1 review PR](https://github.com/cyuanxv/openrouter-chatgpt-plugin/pull/1).
+Private source `7df2a2cc5bbf5b7f2af633a9d90b0baeabcf775f` deployed successfully on 2026-10-11. Hosting success is distinct from live acceptance and scheduled notification delivery. Public identity and deployment placeholders remain unconfigured. No team version, paid inference or production model switch is included.
 
 ## What it does
 

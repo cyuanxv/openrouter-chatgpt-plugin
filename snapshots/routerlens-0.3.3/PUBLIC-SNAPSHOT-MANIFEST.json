@@ -1,8 +1,8 @@
 {
-  "snapshot": "0.3.4-candidate.1",
-  "base_commit": "5cb60f63a390ec48d007807dd1361228a5c2a00f",
-  "production_service_status": "Private service 0.3.4 / Sites version 4 deployed from 355e6bbf293c628b5f97a2eaf02ef593d0b3faea; source audited 2026-10-11. Unchanged by public maintenance.",
-  "verification": "2026-10-11: fresh locked dependency installation, build, 126/126 synthetic tests, artifact validation and npm/shell build equivalence passed on Node.js 22.22.2. No deployment, merge or paid inference.",
+  "snapshot": "0.4.0",
+  "private_source_commit": "7df2a2cc5bbf5b7f2af633a9d90b0baeabcf775f",
+  "production_service_status": "0.4.0 deployed 2026-10-11; live acceptance recorded separately.",
+  "verification": "2026-10-11: private source and sanitized public snapshot each passed 139/139 synthetic tests, build and artifact validation. Production browser and cloud scheduled-task acceptance are recorded separately. No paid inference.",
   "files": [
     {
       "path": ".gitignore",
@@ -10,7 +10,7 @@
     },
     {
       "path": ".openai/hosting.json",
-      "sha256": "9f4ab8a2e64195d5c7032c0f358b03bbbe744291b95e004305b5c165e9b8a810"
+      "sha256": "f6132bfa686a7dbf6858d4f1b076736ff0c12d7d7cad680135c8eb8a729c632f"
     },
     {
       "path": "LICENSE",
@@ -18,7 +18,15 @@
     },
     {
       "path": "README.md",
-      "sha256": "08e7b8b2301af5bc5e62aea7e9f9df1a776a7f3313a4fb9f5238d759338f9676"
+      "sha256": "c04fb8cc14550a4e384a949c1c779ed3d49d3d4cb7b0b23e7574a4b7506c7a04"
+    },
+    {
+      "path": "drizzle/0000_personal_ops.sql",
+      "sha256": "f2fd1950121772f3b0209e5f2a41d2f15f1483e2b6551994af78363290b63b15"
+    },
+    {
+      "path": "drizzle/meta/_journal.json",
+      "sha256": "ad43b41f735ed7d8aa5b2254c622bf10ac6a53c501f7ddc5caa6a09c08b7ee37"
     },
     {
       "path": "lib/analytics.ts",
@@ -81,6 +89,10 @@
       "sha256": "58a6dd7ee344fb31566e9a09d9a98f4302c2b7c9d69379c19b1695447323b808"
     },
     {
+      "path": "lib/operations.ts",
+      "sha256": "b7525be50dd75caa2d102d3d0133c01502049afaf278ff2fffa800da0a03533f"
+    },
+    {
       "path": "lib/queryPlanning.ts",
       "sha256": "9a96bf3bea70a2650d8e488ca61f8861f8b5fa0a841ada82f43fe07d46a839a6"
     },
@@ -89,12 +101,16 @@
       "sha256": "3cc4ab4149c93166bd9c7ce315490eea1db67b43d7dfbce9b3cae08b6beff197"
     },
     {
+      "path": "lib/storage.ts",
+      "sha256": "bea202aac6293b12b1a705e1df308fb4abe2e84b7786a68e495f5576b33c7edb"
+    },
+    {
       "path": "lib/time.ts",
       "sha256": "305cf8daeca69b3c842a6bea0cb2db6f3de4aff9ae8a3cd9c2acc93341ccc835"
     },
     {
       "path": "lib/tools.ts",
-      "sha256": "084df841d5ee55c97ec1d6ec60e9b39f0d242d887f62a62b17f4564f17c16b90"
+      "sha256": "ab7e48db199b9efac6100baad6226c2f5403c290c07db0be85d4588ee975e90c"
     },
     {
       "path": "lib/workloadEstimate.ts",
@@ -102,15 +118,15 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "600cabc34ba07b18c72d9377795b7e19e403934c8284f8ad30cbe69ba6f2a4fa"
+      "sha256": "b78fec08d823a64a269da250039cf9e8ebd1b4f3b2f6ef11db1b1f550f03d19e"
     },
     {
       "path": "package.json",
-      "sha256": "f36442b3cdc6cda8951a68786d316acc4af85033afba390cabf84500e5779f64"
+      "sha256": "4cab88f9a6743222119a732895a0961275693c3077e871b59a6ab96201934dca"
     },
     {
       "path": "scripts/build.mjs",
-      "sha256": "89ed274a9a0d43e79d7dcd2cd25b0ae7f8851c19c816e92e30c8ce414ba613a3"
+      "sha256": "c1cc7293d0627574eb3271e0ea14de01643a85301dc2d050ec5e45c4262a8ff4"
     },
     {
       "path": "scripts/build.sh",
@@ -137,24 +153,28 @@
       "sha256": "7e558573c33ba9719dacd9f0919abe5ed6046480931febb1354b9df3a9ad2452"
     },
     {
+      "path": "tests/operations.test.mjs",
+      "sha256": "46d96c3e1e483667018b6ea18d279f2eb3dde6dc538425de9af17aed3f68dbce"
+    },
+    {
       "path": "tests/precision-review.test.mjs",
       "sha256": "13fd0140da8f4e4d5e1c46a2f9ab20b2855444ca92eac7a88e248bba43291c20"
     },
     {
       "path": "tests/worker.test.mjs",
-      "sha256": "c43f8f43556d73a792185da147ceb835fb1877c38c4a5bc5111ae3552d5dd9d0"
+      "sha256": "8daa71e25808d04a1bc66ac92e875ef39c11990be0060b831684651a1acb6e24"
     },
     {
       "path": "worker/index.ts",
-      "sha256": "e8a5d036fd049e4269f8753c311ac5ae09d8f35d821064dc28d74f00cbbff23d"
+      "sha256": "69c3c2aa021a803fcf26ce3507993d43797ab2b1cbc7a892abcc7fe8bb6bce67"
     },
     {
       "path": "worker/page.ts",
-      "sha256": "a325bba6f5ff63bf2b6960ab926c6603707501dd6855adb3e990f14d18266fdc"
+      "sha256": "24994caaa00d28c01dd3dd5ab90495415827d9add6bd4561c92b3f9a7e416b3f"
     },
     {
       "path": "worker/upstream.ts",
-      "sha256": "1124e10f0e7d734a10fcafb3a0c820272ca228fe26ba56f715bac436628ab1a2"
+      "sha256": "c5847fab3cc47399025992ebbb6c6b2b375d0502e6771b4dcdc34a0b902e3805"
     }
   ]
 }

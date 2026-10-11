@@ -1,57 +1,39 @@
-# RouterLens 0.3.4 analytics-integrity candidate
+# RouterLens 0.4.0 public Worker candidate
 
-Public candidate based on the sanitized 0.3.3 source snapshot at commit `5cb60f63a390ec48d007807dd1361228a5c2a00f`. The historical `snapshots/routerlens-0.3.3` directory is retained on this isolated development branch to keep the patch reviewable. The repository root application is not the candidate build target.
+Owner-private Sites MCP adapter and personal operations workspace. Service release 0.4.0 retains the eight reviewed analytics tools and adds twelve request, report and experiment operations. Source tool/analysis logic is reused from `cyuanxv/openrouter-chatgpt-plugin` commit `35f0c1349b28d29cd24db8272c3d3344fea99b04`; original Apache-2.0 license is retained.
 
-## Release status
+Build: `npm run build`; test the built Worker with `npm test`; validate with `npm run validate`. Output is `dist/server/index.js` and `dist/.openai/hosting.json`.
 
-- This public snapshot reports **0.3.4-candidate.1** and retains sanitized deployment placeholders. The historical package version `0.1.1` is an internal package identifier, not the service version.
-- The private service reports **0.3.4**. Sites version 4 deployed successfully on 2026-10-09 from source `355e6bbf293c628b5f97a2eaf02ef593d0b3faea`.
-- On 2026-10-11, a read-only comparison against public candidate `56eddac4e2362ea355f590922126b4b8cbf68428` found 38 private source files and the same 38 public files plus `PUBLIC-SNAPSHOT-MANIFEST.json`. Of those 38 files, 31 were byte-identical, including `lib/analytics.ts`, `lib/exactRange.ts` and the integrity regression tests. The remaining differences were identity placeholders, the service version string, documentation, ignore rules and the legacy shell build entrypoint. No private-only source file was missing from the public snapshot. The compiled production artifact was not independently downloaded and compared.
-- All eight read-only RouterLens tools were exercised successfully in the same audit, including truncated-result handling, UTC/Shanghai anomaly behavior and the 31-day Shanghai range bound. No paid model inference was run. This verifies selected live behavior separately from the source comparison and synthetic tests.
-- The original candidate passed **126/126 synthetic tests**, build and artifact validation on 2026-10-08 with reused locked dependencies. See the maintenance validation below for the fresh-checkout result.
-- This public maintenance update does not merge branches, update the installed plugin or deploy the private service.
+The hosting dispatcher supplies trusted authenticated-user headers. Native access policy is owner-only; each tool call additionally requires a nonempty site-scoped user ID and the platform-verified owner's email. A service bypass credential does not create that identity. Protocol discovery contains no account data. Cross-origin browser tool requests are limited to the Site origin and ChatGPT.
 
-## Canonical build entrypoint
+The sole user-entered secret is `OPENROUTER_MANAGEMENT_KEY`, stored through Sites Settings → environment variables → secret. Do not send its value to the assistant or commit it. The key itself has administrative authority; this bridge exposes only GET credits, GET analytics metadata, POST analytics query, GET generation metadata, GET key metadata, and unauthenticated public model metadata. No key writes or paid model calls exist. Destinations are hardcoded OpenRouter URLs, redirects disabled, 20-second deadline and 4 MiB response limit. Missing credentials close private operations. Tools return allowlisted Key metadata and sanitize errors; this source emits no logs.
 
-`npm run build` runs `scripts/build.mjs`, which bundles `worker/index.ts`. The shell entrypoint `bash scripts/build.sh` delegates to that same builder and resolves the project directory before running, so it can be invoked from another working directory.
+A configured flag is not a successful account test. This release reuses the existing source and authentication boundary. Source alone does not configure, reconnect or verify an account.
 
-The audited private deployment source still contains an obsolete `scripts/build.sh` that copies an absent `worker/index.js`. No tracked build configuration references that old script; its documented npm build uses the correct `build.mjs`. This public candidate already used the correct shell delegate before this maintenance update. The private script remains unchanged until a separately authorized private-source update; do not copy it back into this candidate.
 
-## Fixed data-integrity gap
+## Release 0.3.3: local-day anomalies
 
-UTC-day-aligned queries previously bypassed row-count consistency validation. A response with one returned row and `metadata: { truncated: false, row_count: 2 }` could be accepted as complete, while hourly reconstruction already rejected this contradiction. This affected usage totals, account spend windows and optimization evidence.
+This private release is based on service 0.3.2 / Site v2 commit `bca082a848e2ff9c16e36704eab85a659f46b098`. It preserves the existing authentication, read-only API boundaries and environment. Publication status is recorded separately in the native Sites deployment receipt.
 
-Contract source (checked 2026-10-08): OpenRouter's [official Analytics Query reference, Response Fields](https://github.com/OpenRouterTeam/skills/blob/main/skills/openrouter-analytics-query/SKILL.md#response-fields) defines `data.metadata.row_count` as "Number of rows returned" and `truncated` as whether results were capped at the limit. Therefore a valid partial response retains `row_count === returned rows`; this field is not a pre-limit matching-total count. The candidate tests both a valid partial response and a contradictory partial response. The [official endpoint reference](https://openrouter.ai/docs/api/api-reference/beta-analytics/query-analytics) additionally documents the query limit and nested response envelope.
+`analyze_cost_anomalies` supports only `UTC` and `Asia/Shanghai`. UTC retains its 30 analysis-day default and up to 90 analysis days. Shanghai defaults to 7 analysis days; the 7-day default baseline is unchanged. Shanghai analysis days plus baseline days must be at most 31; longer requests are rejected rather than shortened. Other timezone names, including DST and half-hour zones, are explicitly unsupported.
 
-A shared envelope validator now runs before every exact-range query returns and before every completeness assertion. It validates row shape, metadata shape, optional truncation type, and optional nonnegative safe-integer row counts against returned rows. Matching numeric-string row counts remain supported. Invalid evidence returns a sanitized error before totals, ranking, or optional provider lookups.
+Shanghai makes exactly one existing read-only Analytics query through `queryExactRange`, for UTC hourly buckets bounded by local midnight. It reuses the shared completeness, range, numeric and duplicate-bucket validation before grouping by local date. The current local day and future dates are excluded. No paid generation or other API is used. The existing 20-second upstream timeout and error handling remain in force; failed calls produce an error rather than an empty or normal result.
 
-Missing metadata or null/missing truncation still means unknown. Explicit truncation remains partial. An empty result does not establish account-wide zero usage. This patch does not add retries, pagination, credentials, tools, or inferred time-bucket coverage. It does not claim that a count match alone proves upstream completeness.
+A Shanghai day is known only with all 24 distinct explicit hourly buckets. Complete zero-valued buckets produce a known zero day; absent or partial bucket coverage produces an `unknown_days` entry and breaks the consecutive baseline. `truncated=false` proves returned-row completeness, not absent-hour zero usage. Sparse upstream responses may therefore yield unknown even when the existing aggregate tool can report observed spend. This conservative limit is intentional until the upstream API supplies independently verified absent-bucket semantics.
 
-The 19 new tests cover nested/flat envelopes, contradictory and invalid counts, malformed metadata, zero rows, complete/partial/unknown distinctions, and regression paths through usage, spend-window and optimization tools. The previous 107 tests still pass.
+No model/provider dimensions are requested. Unexpected group fields, duplicate hours, out-of-range buckets, truncated/unknown completeness, malformed/underflowed cost strings and arithmetic overflow fail closed. Signed hourly adjustments are retained. A complete day with negative net spend is reported as unknown (`unsupported_negative_net`) with its original observed net amount; it breaks the baseline without discarding other days. Small representable decimal amounts are retained without rounding to cents; sums and threshold comparisons use bounded base-10 arithmetic, without arbitrary epsilon tolerances. Each daily row retains a `total_usage_decimal` string for exact comparison of the values actually received. Numeric display values remain finite JavaScript numbers; this is not a substitute for billing reconciliation.
 
-## Included functionality
+Build and run synthetic checks with `npm ci --ignore-scripts`, `npm run build`, `npm test`, `npm run validate`. The added tests never contact the real account or run inference. Live feature acceptance is separate from these synthetic checks and must be recorded after deployment.
 
-Eight read-only MCP tools cover account summary, analytics metadata/recipes, usage queries, cost anomalies, optimization evidence, API-key metadata, model comparison and configuration status.
+## Release 0.4.0: personal operations
 
-Local-day anomalies support **UTC and Asia/Shanghai only**. Shanghai uses one complete hourly query bounded by local midnight, with a maximum of 31 days including its consecutive baseline. Current and future days are excluded. Missing hourly coverage is unknown rather than zero. Complete negative-net days are retained as unknown with the observed net amount and break the baseline. Complete explicit zero buckets remain zero. Exact decimal sums and integer cross-products decide thresholds; numeric display values do not invent precision lost upstream.
+- Request metadata listing with exact date/model/provider/key filters and explicit truncation; generation details omit prompts and response content. Generation metadata access depends on the upstream credential.
+- Completed-period cost comparisons, weekly reports and daily anomaly reports. Empty or incomplete evidence remains unknown. Reports and delivery receipts persist in D1 (`DB`), with schema-only migrations in `drizzle/` copied into the deployment archive.
+- Experiment plans and matched-case comparisons of quality, cost per accepted case and latency. Existing request costs and manual costs are labeled separately. This release executes no paid model calls and changes no production routing.
+- Reports are generated idempotently by period. Claim delivery atomically before sending, then record the actual Telegram receipt. Failed/uncertain sends remain `unknown` and are not retried automatically. Persistently unknown daily checks are suppressed after the initial notice; normal daily checks remain silent.
 
-## What was deliberately removed
+Scheduled workflow: every Monday 09:00 Asia/Shanghai generate a weekly report; daily at 09:15 generate the previous day's anomaly report. For each report, check `payload.should_notify`, call `claim_report_delivery`, and send `payload.telegram_text` through the connected Telegram `default` Bot to the owner-selected `YOUR_TELEGRAM_CHAT_ALIAS` alias only when `claimed=true`. Record the returned message ID using `record_report_delivery`, then read the report back. If send outcome is uncertain, record `unknown`; never retry a potentially delivered message. Credentials belong in their existing connected services, never source or prompts. Schedules are separate cloud tasks; their existence and enabled state must be verified after deployment.
 
-No real owner binding, private Site hostname or project ID, runtime environment values, credentials, account/billing exports, raw private archive, compiled deployment artifact, npm cache, delivery logs or private Git history is included. The generic source references environment variable **names** and synthetic test secrets only; their real values are absent.
+`npm run build`, `npm test`, and `npm run validate` verify the artifact and synthetic scenarios. `scripts/build.sh` delegates to the same build pipeline from any working directory. Synthetic tests do not prove live account or notification access; record production receipts separately.
 
-`worker/index.ts`, `tests/worker.test.mjs` and `.openai/hosting.json` contain obvious `example.invalid` or `REPLACE_WITH_...` placeholders. **These files are not configured for deployment.** The worker requires a trusted platform identity dispatcher that authenticates users and overwrites identity headers before forwarding requests. Do not expose it directly while treating client-supplied identity headers as proof of ownership. Configure your own owner-only access and replace placeholders privately before considering deployment. Do not commit real Management Keys.
-
-## Legacy reference modules
-
-`lib/auth.ts`, `lib/mcpRuntime.ts` and `lib/hosted/` preserve earlier Next.js/OAuth adapter source as reference. The standalone Worker entry point is `worker/index.ts`; it does not import those adapters. They are not enabled, configured or integration-tested by this snapshot, and `mcp-handler` is intentionally not installed in its Worker-only package. For the Next.js adapter's original dependency set and integration context, consult the existing [v0.3.1 review branch](https://github.com/cyuanxv/openrouter-chatgpt-plugin/tree/fix/routerlens-v0.3.1-reviewed) and its package manifest. Do not assume the reference adapters are an additional runnable service here.
-
-## Layout and offline checks
-
-- `lib/`: analytics, decimal threshold arithmetic, precise range validation, tool definitions, and read-only clients
-- `worker/`: generic Worker adapter and page with sanitized owner/origin placeholders
-- `tests/`: synthetic tests; Worker tests disable real network access
-- `scripts/`: build and artifact validation helpers
-
-Requires **Node.js 22 or newer** (the locked Miniflare 4 test runtime requires it). For an independent new checkout, use `npm ci --ignore-scripts`, `npm run build`, `npm test`, and `npm run validate`. Tests never require a real Management Key or paid generation. Maintenance validation on 2026-10-11 passed on Node.js 22.22.2: fresh `npm ci --ignore-scripts --no-audit --no-fund`, `npm run build`, **126/126 synthetic tests**, and `npm run validate`. Invoking `bash snapshots/routerlens-0.3.3/scripts/build.sh` from the repository root produced byte-identical Worker and hosting-manifest outputs to the npm build. Worker tests explicitly disable outbound network access; other tests use injected synthetic clients and do not require real account access.
-
-License: Apache-2.0. This is independent of and not endorsed by OpenRouter.
+This sanitized source snapshot is based on private source `7df2a2cc5bbf5b7f2af633a9d90b0baeabcf775f`. Replace identity, origin, Site project and Telegram destination placeholders before your own deployment. The historical directory name is retained. This is separate from the legacy root application.
