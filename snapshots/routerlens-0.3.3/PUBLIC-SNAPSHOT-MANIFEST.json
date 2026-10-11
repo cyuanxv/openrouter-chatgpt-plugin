@@ -1,8 +1,8 @@
 {
-  "snapshot": "0.4.2",
-  "private_source_commit": "45e0cf38ca05be874a9d9b41d94adf610871d996",
-  "production_service_status": "0.4.2 deployed 2026-10-11 with owner-only access; live browser attribution matched the separately reviewed historical day.",
-  "verification": "2026-10-11: private and sanitized public source each passed 177/177 synthetic tests, build and artifact validation. Live browser attribution matched the separately reviewed historical day. Report integration tested synthetically; natural scheduled report verification remains pending.",
+  "snapshot": "0.5.0",
+  "private_source_commit": "00ade82f2876cf3d1f396046527c56bd110cb919",
+  "production_service_status": "0.5.0 deployed 2026-10-11, owner-only access preserved.",
+  "verification": "Private and sanitized public source: 192/192 tests, build and ESM artifact checks passed. Local browser verified save, revision update, restore draft and live model metadata preview. Production functional acceptance recorded separately.",
   "files": [
     {
       "path": ".gitignore",
@@ -18,15 +18,19 @@
     },
     {
       "path": "README.md",
-      "sha256": "c59b56aec955b1d17bd5224d187af2c1f2269764a07b5c0af092b07427804ed3"
+      "sha256": "db4351bc5ba557be8f527398a780a21e9f3dfa25840705ff27371c787367ef12"
     },
     {
       "path": "drizzle/0000_personal_ops.sql",
       "sha256": "f2fd1950121772f3b0209e5f2a41d2f15f1483e2b6551994af78363290b63b15"
     },
     {
+      "path": "drizzle/0001_routing_presets.sql",
+      "sha256": "e67ddfb8ad1d519ca57a935d1fd2dcf3c9bdf2dbb07572cd0edaaf67f70fdcac"
+    },
+    {
       "path": "drizzle/meta/_journal.json",
-      "sha256": "ad43b41f735ed7d8aa5b2254c622bf10ac6a53c501f7ddc5caa6a09c08b7ee37"
+      "sha256": "63706e9528f09b7f59f850e12bf92388919308a72dcf181a38b3e2da8e0f9cd0"
     },
     {
       "path": "lib/analytics.ts",
@@ -94,7 +98,7 @@
     },
     {
       "path": "lib/operations.ts",
-      "sha256": "de908cd192603a84594a031813f3801f62ccb7c051289c56e33804118461088d"
+      "sha256": "477d9b289f0ec509861c4e72a84d032189f61f9a80a5e5c48932408bb9b12620"
     },
     {
       "path": "lib/queryPlanning.ts",
@@ -103,6 +107,10 @@
     {
       "path": "lib/queryRecipes.ts",
       "sha256": "3cc4ab4149c93166bd9c7ce315490eea1db67b43d7dfbce9b3cae08b6beff197"
+    },
+    {
+      "path": "lib/routing.ts",
+      "sha256": "83b4eccfa7c8e10c046aa348e888b5d1577ad64eeabaea2ad854e7d17bbdf750"
     },
     {
       "path": "lib/sparseHourCoverage.ts",
@@ -118,7 +126,7 @@
     },
     {
       "path": "lib/tools.ts",
-      "sha256": "8874eeb01b4ab26861ba5e1c73ef7a4c195bb4da63ac6e7010aabe97fc8b061b"
+      "sha256": "6c83ad2f9deee4b3e0f5bd835f691db4163f3d83e0f3d62500c91f8159055c5f"
     },
     {
       "path": "lib/workloadEstimate.ts",
@@ -126,11 +134,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "82b37116f620896ca9778c328818743285ca6a1d4d5c003067f4bf7692ffc740"
+      "sha256": "aa16cf1cd57c6aeb70d59e5f307c7cdae062a002b7bfcc81b01526a1e16cfbb7"
     },
     {
       "path": "package.json",
-      "sha256": "cd54c29fcdfcfc6237cd11d217634d9e5c763b36d0a2093a43b2daa5dc49c228"
+      "sha256": "d3909be312165ce5e843a1b89e51c88163360aaea010b9fcf7b48db9cfb8fce7"
     },
     {
       "path": "scripts/build.mjs",
@@ -173,20 +181,28 @@
       "sha256": "13fd0140da8f4e4d5e1c46a2f9ab20b2855444ca92eac7a88e248bba43291c20"
     },
     {
+      "path": "tests/routing.test.mjs",
+      "sha256": "71505d85818c81f21d7f39cc953401e8a5312951d0d00cd77c56798ffcdaf151"
+    },
+    {
       "path": "tests/sparse-hour-coverage.test.mjs",
       "sha256": "e448de50f5a0087d1e8cd0d13fd713e5b1e28e8704438c8159a24e99b5be74a7"
     },
     {
       "path": "tests/worker.test.mjs",
-      "sha256": "93a6403f686f3c0dc5651fd6af8fe60107ed34d256aeaa066be50a87db2bad02"
+      "sha256": "426eced4baab29a4f5dbf0167c630d934dff4d223ecd75d2b316f6d2b72f6712"
     },
     {
       "path": "worker/index.ts",
-      "sha256": "8aac7d1576b2a35eba8a651e8ef0b7e00339c6dadbb3f552c53edb6b85332ef6"
+      "sha256": "dc178e5bf48670bfe99ea57f6e167c422e7cb66b463618541c5bd55086d33d57"
     },
     {
       "path": "worker/page.ts",
-      "sha256": "8424d041fc9bf7b76f26a4d70651b97be3600a4e086b09824d5a6bd43c9ac2ee"
+      "sha256": "e2781b821752a4cfb6f7d4c0fbfe1052f130dbf6e9c9260ec4baaa2e7215f444"
+    },
+    {
+      "path": "worker/routingPage.ts",
+      "sha256": "68eda2850aef85c8df6d990185d7ca7a00b94121e1470efd9552863d6760b841"
     },
     {
       "path": "worker/upstream.ts",
