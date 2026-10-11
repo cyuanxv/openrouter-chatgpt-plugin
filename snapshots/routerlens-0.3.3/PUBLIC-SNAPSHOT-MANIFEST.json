@@ -1,8 +1,8 @@
 {
   "snapshot": "0.3.4-candidate.1",
   "base_commit": "5cb60f63a390ec48d007807dd1361228a5c2a00f",
-  "production_service_status": "unchanged by this candidate",
-  "verification": "Build, 126/126 synthetic tests and artifact validation passed; no deployment or live-account acceptance. Locked dependencies reused.",
+  "production_service_status": "Private service 0.3.4 / Sites version 4 deployed from 355e6bbf293c628b5f97a2eaf02ef593d0b3faea; source audited 2026-10-11. Unchanged by public maintenance.",
+  "verification": "2026-10-11: fresh locked dependency installation, build, 126/126 synthetic tests, artifact validation and npm/shell build equivalence passed on Node.js 22.22.2. No deployment, merge or paid inference.",
   "files": [
     {
       "path": ".gitignore",
@@ -18,7 +18,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "2abc4223e83dd501d9bf782aa7b85511416bf88ca75813e899a6a6e2194924f2"
+      "sha256": "08e7b8b2301af5bc5e62aea7e9f9df1a776a7f3313a4fb9f5238d759338f9676"
     },
     {
       "path": "lib/analytics.ts",
@@ -114,7 +114,7 @@
     },
     {
       "path": "scripts/build.sh",
-      "sha256": "4fe5b8331bae3b0f0cba06b9340783d03d7a1b65c349ab04557c866363d18676"
+      "sha256": "c8ebb5d9e0c1d0c02be1f86285919716f0102ac4b95847250cebe2631f8856cd"
     },
     {
       "path": "scripts/validate-artifact.mjs",

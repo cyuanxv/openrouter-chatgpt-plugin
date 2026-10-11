@@ -1,13 +1,21 @@
 # RouterLens 0.3.4 analytics-integrity candidate
 
-Unpublished candidate based on the sanitized 0.3.3 source snapshot at commit `5cb60f63a390ec48d007807dd1361228a5c2a00f`. The historical `snapshots/routerlens-0.3.3` directory is retained on this isolated development branch to keep the patch reviewable. The repository root application is not the candidate build target.
+Public candidate based on the sanitized 0.3.3 source snapshot at commit `5cb60f63a390ec48d007807dd1361228a5c2a00f`. The historical `snapshots/routerlens-0.3.3` directory is retained on this isolated development branch to keep the patch reviewable. The repository root application is not the candidate build target.
 
 ## Release status
 
-- This branch is **0.3.4-candidate.1**, not a production release or plugin update.
-- All work here uses synthetic responses. No account query, credential generation, paid inference or deployment was performed.
-- Build, **126/126 synthetic tests**, and artifact validation passed on 2026-10-08 with Node.js 22+. These are cloud offline checks, not live-account acceptance or independent human review.
-- Installed locked dependencies were reused from the prior validated sanitized snapshot; a new clean dependency install was not run for this patch.
+- This public snapshot reports **0.3.4-candidate.1** and retains sanitized deployment placeholders. The historical package version `0.1.1` is an internal package identifier, not the service version.
+- The private service reports **0.3.4**. Sites version 4 deployed successfully on 2026-10-09 from source `355e6bbf293c628b5f97a2eaf02ef593d0b3faea`.
+- On 2026-10-11, a read-only comparison against public candidate `56eddac4e2362ea355f590922126b4b8cbf68428` found 38 private source files and the same 38 public files plus `PUBLIC-SNAPSHOT-MANIFEST.json`. Of those 38 files, 31 were byte-identical, including `lib/analytics.ts`, `lib/exactRange.ts` and the integrity regression tests. The remaining differences were identity placeholders, the service version string, documentation, ignore rules and the legacy shell build entrypoint. No private-only source file was missing from the public snapshot. The compiled production artifact was not independently downloaded and compared.
+- All eight read-only RouterLens tools were exercised successfully in the same audit, including truncated-result handling, UTC/Shanghai anomaly behavior and the 31-day Shanghai range bound. No paid model inference was run. This verifies selected live behavior separately from the source comparison and synthetic tests.
+- The original candidate passed **126/126 synthetic tests**, build and artifact validation on 2026-10-08 with reused locked dependencies. See the maintenance validation below for the fresh-checkout result.
+- This public maintenance update does not merge branches, update the installed plugin or deploy the private service.
+
+## Canonical build entrypoint
+
+`npm run build` runs `scripts/build.mjs`, which bundles `worker/index.ts`. The shell entrypoint `bash scripts/build.sh` delegates to that same builder and resolves the project directory before running, so it can be invoked from another working directory.
+
+The audited private deployment source still contains an obsolete `scripts/build.sh` that copies an absent `worker/index.js`. No tracked build configuration references that old script; its documented npm build uses the correct `build.mjs`. This public candidate already used the correct shell delegate before this maintenance update. The private script remains unchanged until a separately authorized private-source update; do not copy it back into this candidate.
 
 ## Fixed data-integrity gap
 
@@ -44,6 +52,6 @@ No real owner binding, private Site hostname or project ID, runtime environment 
 - `tests/`: synthetic tests; Worker tests disable real network access
 - `scripts/`: build and artifact validation helpers
 
-Requires **Node.js 22 or newer** (the locked Miniflare 4 test runtime requires it). For an independent new checkout, use `npm ci --ignore-scripts`, `npm run build`, `npm test`, and `npm run validate`. Tests never require a real Management Key or paid generation. For this candidate, build, tests and artifact validation completed with exit code 0; the clean-install command is provided for reproduction but was not repeated. Worker tests explicitly disable outbound network access; other tests use injected synthetic clients and do not require real account access.
+Requires **Node.js 22 or newer** (the locked Miniflare 4 test runtime requires it). For an independent new checkout, use `npm ci --ignore-scripts`, `npm run build`, `npm test`, and `npm run validate`. Tests never require a real Management Key or paid generation. Maintenance validation on 2026-10-11 passed on Node.js 22.22.2: fresh `npm ci --ignore-scripts --no-audit --no-fund`, `npm run build`, **126/126 synthetic tests**, and `npm run validate`. Invoking `bash snapshots/routerlens-0.3.3/scripts/build.sh` from the repository root produced byte-identical Worker and hosting-manifest outputs to the npm build. Worker tests explicitly disable outbound network access; other tests use injected synthetic clients and do not require real account access.
 
 License: Apache-2.0. This is independent of and not endorsed by OpenRouter.
