@@ -23,3 +23,26 @@ test('experiment IDs are immutable plans and unknown models cannot be recorded',
 test('generation upstream failures are sanitized',async t=>{const o=await harness(t,client({getGeneration:async()=>{throw new Error('secret-key-content')}}));const r=await o.call('get_call_detail',{generation_id:'gen-x'});assert.equal(r.isError,true);assert.doesNotMatch(JSON.stringify(r),/secret-key-content/);});
 
 test('provider investigation preserves hourly evidence instead of implicit regrouping',async t=>{const queries=[];const c=client();const original=c.queryAnalytics;c.queryAnalytics=async q=>{queries.push(q);return original(q)};const o=await harness(t,c);const result=await call(o,'investigate_spend',{timezone:'Asia/Shanghai'});assert.equal(result.providers.available,true);const provider=queries.find(q=>q.dimensions?.includes('provider'));assert.equal(provider.granularity,'hour');assert.equal(provider.limit,100);});
+
+for(const failAttribution of [false,true])test('reports attach automatic attribution; failure does not hide anomaly '+failAttribution,async t=>{
+ let queryCalls=0;
+ const c=client({queryAnalytics:async q=>{
+  queryCalls++;const rows=[];
+  for(let stamp=Date.parse(q.time_range.start);stamp<Date.parse(q.time_range.end);stamp+=86400000){
+   const day=new Date(stamp).toISOString().slice(0,10),spend=day==='2026-10-10'?10:1;
+   const row={};for(const metric of q.metrics)row[metric]=metric==='total_usage'?spend:10;
+   if(q.granularity)row['date__'+q.granularity]=q.granularity==='day'?day:new Date(stamp).toISOString();
+   for(const dim of q.dimensions??[])row[dim]=dim==='model'?'test/base':'Example App';
+   rows.push(row);
+  }
+  return {data:{data:rows,metadata:{truncated:failAttribution&&q.limit===10000&&q.dimensions?.[0]==='model',row_count:rows.length}}};
+ }});
+ const o=await harness(t,c),r=await call(o,'generate_cost_report',{kind:'daily_alert',timezone:'UTC'});
+ assert.equal(r.payload.assessment,'candidate');assert.equal(r.payload.should_notify,true);assert.equal(r.payload.attributions.length,1);
+ if(failAttribution){assert.equal(r.payload.attributions[0].available,false);assert.match(r.payload.telegram_text,/归因数据不足/);}else{assert.equal(r.payload.attributions[0].available,true);assert.match(r.payload.telegram_text,/自动归因/);}
+ const before=queryCalls;assert.equal((await call(o,'generate_cost_report',{kind:'daily_alert',timezone:'UTC'})).id,r.id);assert.equal(queryCalls,before);
+});
+test('historical saved reports do not attach current-window attribution',async t=>{
+ const o=await harness(t);const r=await call(o,'generate_cost_report',{kind:'weekly',timezone:'UTC',end_date:'2026-10-01'});
+ assert.deepEqual(r.payload.attributions,[]);assert.equal(r.payload.anomalies.available,false);assert.doesNotMatch(r.payload.telegram_text,/自动归因/);
+});

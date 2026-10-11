@@ -4,13 +4,13 @@
 
 An open-source OpenRouter plugin that combines OpenRouter's official MCP server with a private analytics bridge for account spend, usage analysis, model comparison, cost anomaly detection, and cost optimization.
 
-Version status (2026-10-11): **RouterLens personal operations 0.4.1**, with a sanitized public Worker candidate and a separate **legacy root application 0.3.0 Alpha**.
+Version status (2026-10-11): **RouterLens personal operations 0.4.2**, with a sanitized public Worker candidate and a separate **legacy root application 0.3.0 Alpha**.
 
 ## Reviewed source snapshot
 
 The standalone [RouterLens Worker candidate](snapshots/routerlens-0.3.3/README.md) adds request details, spend investigations, persistent reports and experiment comparisons. The historical directory name remains; use its own install/build/test workflow.
 
-Private source `7f552f82e0d6a0e6d5892f3ad63efa4290ed4dd6` deployed successfully on 2026-10-11. Hosting success is distinct from live acceptance and scheduled notification delivery. Public identity and deployment placeholders remain unconfigured. No team version, paid inference or production model switch is included.
+Private source `45e0cf38ca05be874a9d9b41d94adf610871d996` deployed successfully on 2026-10-11. Hosting success is distinct from live acceptance and scheduled notification delivery. Public identity and deployment placeholders remain unconfigured. No team version, paid inference or production model switch is included.
 
 ## What it does
 

@@ -4,6 +4,7 @@ import { Store, type DB } from './storage';
 import { addCalendarDays, dateStringInZone, startOfDayUtc } from './time';
 import { publicErrorMessage, PublicError, OpenRouterError } from './errors';
 import { requiredNumber } from './analytics';
+import { explainCostAnomaly } from './costAttribution';
 
 const zone=z.enum(['UTC','Asia/Shanghai']).default('Asia/Shanghai');
 const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>{try{return new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v}catch{return false}},'Invalid calendar date');
@@ -65,6 +66,7 @@ export function createOperations(client:RouterLensToolClient,db?:DB,now:()=>Date
   const [a,b,models,providers,keys]=await Promise.all([query(r),query(p),optional(()=>query(r,['model'])),optional(()=>invoke('query_usage',{time_range:{start:r.start,end:r.end},granularity:'hour',dimensions:['provider'],metrics:['total_usage','request_count'],limit:100,order_by:{field:'total_usage',direction:'desc'}})),optional(()=>invoke('query_usage',{time_range:r,granularity:'hour',dimensions:['api_key_id'],metrics:['total_usage','request_count'],limit:100,order_by:{field:'total_usage',direction:'desc'}}))]);
   return {range:r,comparison_range:p,spend:change(total(a,'total_usage'),total(b,'total_usage')),requests:change(total(a,'request_count'),total(b,'request_count')),models,providers,api_key_hourly_evidence:keys,key_identity_warning:'Returned key labels may be shared; use verified key IDs for filters. Hourly rows are not account-wide key rankings.',cause_status:'attribution_evidence_not_proven_cause',next_step:'Filter list_call_records by the high-cost model/provider or verified API-key ID, then get_call_detail.'};
  });
+ add('explain_cost_anomaly','Explain a completed day against the preceding complete-day mean using reconciled model and app contributions plus request/input/output changes. Read-only metadata, no proven causal claims.',{timezone:zone,date:date.optional(),baseline_days:z.number().int().min(3).max(30).default(7)},async(i:any)=>explainCostAnomaly({...i,date:i.date??addCalendarDays(dateStringInZone(now(),i.timezone),-1)},client.queryAnalytics,now()));
  add('generate_cost_report','Generate and save an idempotent weekly report or daily alert from completed periods. Returns message text for approved Telegram delivery. Saving does not send; claim and record delivery separately.',{...common,kind:z.enum(['weekly','daily_alert']).default('weekly')},async(i:any)=>{
   const range=completedRange(i.kind==='weekly'?7:1,i.timezone,i.end_date,now());const rid=`${i.kind}:${i.timezone.replace('/','_')}:${range.end_date}`;
   const existing=await store.report(rid);if(existing)return existing;
@@ -74,13 +76,19 @@ export function createOperations(client:RouterLensToolClient,db?:DB,now:()=>Date
   const anomalyEvidence=range.end_date===dateStringInZone(now(),i.timezone)?anomalies:{available:false,reason:'Historical anomaly window not queried.'};
   const spend=change(current.available?total(current.data,'total_usage'):null,prior.available?total(prior.data,'total_usage'):null);
   const assessment=!anomalyEvidence.available||!anomalyEvidence.data.evaluated_days?'unknown':anomalyEvidence.data.anomalies.length?'candidate':'no_candidates';
+  const candidates=anomalyEvidence.available?[...anomalyEvidence.data.anomalies].sort((a:any,b:any)=>b.absoluteIncrease-a.absoluteIncrease):[];
+  const attributions=[];
+  // Bound report latency. Failure to attribute never hides an anomaly.
+  for(const candidate of candidates.slice(0,3)){attributions.push({date:candidate.date,...await optional(()=>explainCostAnomaly({date:candidate.date,timezone:i.timezone,baseline_days:7},client.queryAnalytics,now()))});}
   const priorAlert=i.kind==='daily_alert'?await store.report(`daily_alert:${i.timezone.replace('/','_')}:${range.start_date}`):null;
   const notify=i.kind==='weekly'||assessment==='candidate'||((assessment==='unknown'||spend.current===null)&&priorAlert?.payload?.assessment!=='unknown');
   const lines=[`RouterLens ${i.kind==='weekly'?'费用周报':'异常检查'}`,`${range.start_date} 至 ${range.end_date}（结束日不含，${i.timezone}）`,`费用：${money(spend.current)}；上期：${money(spend.previous)}`,`变化：${money(spend.increase)}${spend.percent===null?'':`（${spend.percent.toFixed(1)}%）`}`,`异常状态：${assessment==='unknown'?'数据不足，无法判断':assessment==='candidate'?'发现费用上涨候选，需排查':'本次可评估日期未发现候选异常'}`];
   if(models.available){lines.push(`主要模型（${models.data.totals_complete?'返回结果完整':'仅返回的部分记录'}）：`);for(const row of models.data.rows.slice(0,3))lines.push(`${row.model}: ${money(row.total_usage)}`);}
   if(anomalyEvidence.available)lines.push(`已评估 ${anomalyEvidence.data.evaluated_days} 天，跳过 ${anomalyEvidence.data.skipped_days} 天。`);
+  for(const item of attributions)lines.push(item.available?item.data.summary_text:`${item.date} 归因数据不足，异常候选仍需排查。`);
+  if(candidates.length>3)lines.push(`另有 ${candidates.length-3} 个异常日期，可按日期查询归因。`);
   lines.push('缺失数据不视为零；金额为查询时观察值，非最终结算。');
-  return store.saveReport(rid,i.kind,{range,comparison_range:previous,spend,current,prior,models,providers,anomalies:anomalyEvidence,assessment,should_notify:notify,telegram_text:lines.join('\n'),generated_at:now().toISOString()});
+  return store.saveReport(rid,i.kind,{range,comparison_range:previous,spend,current,prior,models,providers,anomalies:anomalyEvidence,attributions,attribution_omitted_days:Math.max(0,candidates.length-3),assessment,should_notify:notify,telegram_text:lines.join('\n').slice(0,3500),generated_at:now().toISOString()});
  },true);
  add('list_cost_reports','List saved reports and delivery states. No query or notification is executed.',{limit:z.number().int().min(1).max(50).default(20)},async(i:any)=>({reports:await store.reports(i.limit)}));
  add('get_cost_report','Read a saved report including its completeness and delivery evidence.',{report_id:id},async(i:any)=>{const r=await store.report(i.report_id);if(!r)throw new Error('NOT_FOUND');return r;});

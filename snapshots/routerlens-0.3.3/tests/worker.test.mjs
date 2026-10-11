@@ -11,10 +11,10 @@ async function runtime(t,key){
 function message(name,args={}){return {jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}};}
 async function rpc(mf,body,headers=ownerHeaders){return mf.dispatchFetch(base+'/mcp',{method:'POST',headers:{'content-type':'application/json',accept:'application/json, text/event-stream','mcp-protocol-version':'2025-03-26',...headers},body:typeof body==='string'?body:JSON.stringify(body)});}
 
-test('Worker discovery has twenty tools and contains no account/configuration secrets',async t=>{
+test('Worker discovery has twenty-one tools and contains no account/configuration secrets',async t=>{
  const {mf}=await runtime(t,false);
  const list=await rpc(mf,{jsonrpc:'2.0',id:1,method:'tools/list'},{});
- assert.equal(list.status,200);const json=await list.json();assert.equal(json.result.tools.length,20);
+ assert.equal(list.status,200);const json=await list.json();assert.equal(json.result.tools.length,21);
  assert.doesNotMatch(JSON.stringify(json),/synthetic-key|linaghenbernadette|total_credits/);
  const init=await rpc(mf,{jsonrpc:'2.0',id:2,method:'initialize',params:{protocolVersion:'2025-03-26',capabilities:{},clientInfo:{name:'synthetic',version:'0'}}},{});
  assert.equal(init.status,200);
@@ -63,7 +63,7 @@ test('Browser API shares owner gate and operations without requiring MCP OAuth r
  const request=(headers,body=message('routerlens_status'))=>mf.dispatchFetch(base+'/api/operations',{method:'POST',headers:{'content-type':'application/json',accept:'application/json, text/event-stream',...headers},body:JSON.stringify(body)});
  assert.equal((await request({})).status,403);
  assert.equal((await request({...ownerHeaders,origin:'https://attacker.example.test'})).status,403);
- const response=await request({...ownerHeaders,origin:base});assert.equal(response.status,200);assert.equal((await response.json()).result.structuredContent.version,'0.4.1');
+ const response=await request({...ownerHeaders,origin:base});assert.equal(response.status,200);assert.equal((await response.json()).result.structuredContent.version,'0.4.2');
  assert.equal((await request(ownerHeaders,message('list_call_records'))).status,503);
  const page=await mf.dispatchFetch(base,{headers:ownerHeaders});assert.match(page.headers.get('content-security-policy'),/script-src 'nonce-/);assert.match(await page.text(),/fetch\('\/api\/operations'/);
 });
