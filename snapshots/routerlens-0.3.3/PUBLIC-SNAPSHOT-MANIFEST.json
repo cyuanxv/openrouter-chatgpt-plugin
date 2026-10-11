@@ -1,8 +1,8 @@
 {
-  "snapshot": "0.4.0",
-  "private_source_commit": "7df2a2cc5bbf5b7f2af633a9d90b0baeabcf775f",
-  "production_service_status": "0.4.0 deployed 2026-10-11; live acceptance recorded separately.",
-  "verification": "2026-10-11: private source and sanitized public snapshot each passed 139/139 synthetic tests, build and artifact validation. Production browser and cloud scheduled-task acceptance are recorded separately. No paid inference.",
+  "snapshot": "0.4.1",
+  "private_source_commit": "7f552f82e0d6a0e6d5892f3ad63efa4290ed4dd6",
+  "production_service_status": "0.4.1 deployed 2026-10-11; owner-only access preserved. Live Shanghai checks evaluated 1/1 and 7/7 days with no unknown days.",
+  "verification": "2026-10-11: private and sanitized public source each passed 158/158 synthetic tests, build and artifact validation. Live reconciliation used independent UTC controls; no paid inference or repeated notifications.",
   "files": [
     {
       "path": ".gitignore",
@@ -18,7 +18,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "c04fb8cc14550a4e384a949c1c779ed3d49d3d4cb7b0b23e7574a4b7506c7a04"
+      "sha256": "2cd66e3972f81a48fdeea5f726ec23e74b14836974e08dcda3d711c29f8484d9"
     },
     {
       "path": "drizzle/0000_personal_ops.sql",
@@ -42,7 +42,7 @@
     },
     {
       "path": "lib/costAnomalyDays.ts",
-      "sha256": "d4cc726b5a4bd24e4f4c2440316481390c0dff2ef9fbbe794b2cbe3295cb2c23"
+      "sha256": "a51138311c2b9ccdb91cd2db88f989ab97b0bf875c3499ca0dfdb043b439d87b"
     },
     {
       "path": "lib/decimalCost.ts",
@@ -101,6 +101,10 @@
       "sha256": "3cc4ab4149c93166bd9c7ce315490eea1db67b43d7dfbce9b3cae08b6beff197"
     },
     {
+      "path": "lib/sparseHourCoverage.ts",
+      "sha256": "01cb8b418443c6eb2fdfd727d460839b02f49ce8cd5b3b20235df5f6a96627a4"
+    },
+    {
       "path": "lib/storage.ts",
       "sha256": "bea202aac6293b12b1a705e1df308fb4abe2e84b7786a68e495f5576b33c7edb"
     },
@@ -110,7 +114,7 @@
     },
     {
       "path": "lib/tools.ts",
-      "sha256": "ab7e48db199b9efac6100baad6226c2f5403c290c07db0be85d4588ee975e90c"
+      "sha256": "6d2f588754b5bf2f6c8f63ec60ac9f1d4ceda2dcb1d94b7a52af86b32a814a7c"
     },
     {
       "path": "lib/workloadEstimate.ts",
@@ -118,11 +122,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "b78fec08d823a64a269da250039cf9e8ebd1b4f3b2f6ef11db1b1f550f03d19e"
+      "sha256": "0cf947ee4d37c09644ba0cd2373836434b1fd7aef0466318d365d580e41cc914"
     },
     {
       "path": "package.json",
-      "sha256": "4cab88f9a6743222119a732895a0961275693c3077e871b59a6ab96201934dca"
+      "sha256": "930e96d74d8afc4d45e462549301a7892f83ad613112c6990936d0f5783f3b26"
     },
     {
       "path": "scripts/build.mjs",
@@ -161,16 +165,20 @@
       "sha256": "13fd0140da8f4e4d5e1c46a2f9ab20b2855444ca92eac7a88e248bba43291c20"
     },
     {
+      "path": "tests/sparse-hour-coverage.test.mjs",
+      "sha256": "e448de50f5a0087d1e8cd0d13fd713e5b1e28e8704438c8159a24e99b5be74a7"
+    },
+    {
       "path": "tests/worker.test.mjs",
-      "sha256": "8daa71e25808d04a1bc66ac92e875ef39c11990be0060b831684651a1acb6e24"
+      "sha256": "5349654186a0a671bf06844d32b00d059362159f45b6c51cff47fac5ba3bca31"
     },
     {
       "path": "worker/index.ts",
-      "sha256": "69c3c2aa021a803fcf26ce3507993d43797ab2b1cbc7a892abcc7fe8bb6bce67"
+      "sha256": "9d82cd9b358a5dcd4563b623b591582d7dbc0aba63480ed70cbd3de83d8ae195"
     },
     {
       "path": "worker/page.ts",
-      "sha256": "24994caaa00d28c01dd3dd5ab90495415827d9add6bd4561c92b3f9a7e416b3f"
+      "sha256": "2988315c6f1efee482ab72a4b86ab6f6cc2210bcdbe8a668a0a065aefca59de5"
     },
     {
       "path": "worker/upstream.ts",

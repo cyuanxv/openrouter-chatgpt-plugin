@@ -63,7 +63,7 @@ test('Browser API shares owner gate and operations without requiring MCP OAuth r
  const request=(headers,body=message('routerlens_status'))=>mf.dispatchFetch(base+'/api/operations',{method:'POST',headers:{'content-type':'application/json',accept:'application/json, text/event-stream',...headers},body:JSON.stringify(body)});
  assert.equal((await request({})).status,403);
  assert.equal((await request({...ownerHeaders,origin:'https://attacker.example.test'})).status,403);
- const response=await request({...ownerHeaders,origin:base});assert.equal(response.status,200);assert.equal((await response.json()).result.structuredContent.version,'0.4.0');
+ const response=await request({...ownerHeaders,origin:base});assert.equal(response.status,200);assert.equal((await response.json()).result.structuredContent.version,'0.4.1');
  assert.equal((await request(ownerHeaders,message('list_call_records'))).status,503);
  const page=await mf.dispatchFetch(base,{headers:ownerHeaders});assert.match(page.headers.get('content-security-policy'),/script-src 'nonce-/);assert.match(await page.text(),/fetch\('\/api\/operations'/);
 });
