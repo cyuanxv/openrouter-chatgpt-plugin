@@ -4,7 +4,13 @@
 
 An open-source OpenRouter plugin that combines OpenRouter's official MCP server with a private analytics bridge for account spend, usage analysis, model comparison, cost anomaly detection, and cost optimization.
 
-Current version: **0.3.0 Alpha**
+Version status (verified 2026-10-11): **private RouterLens service 0.3.4**, **public Worker candidate 0.3.4-candidate.1**, and **legacy root application 0.3.0 Alpha**. These are separate release surfaces.
+
+## Reviewed source snapshot
+
+The standalone [RouterLens Worker candidate](snapshots/routerlens-0.3.3/README.md) contains the local-calendar anomaly and analytics-integrity fixes. The historical directory name is retained; use its own install/build/test workflow, not the repository root application.
+
+The private service 0.3.4 was deployed on 2026-10-09 from source `355e6bbf293c628b5f97a2eaf02ef593d0b3faea`. A read-only source audit on 2026-10-11 confirmed that the analytics-integrity logic and tests match public candidate `56eddac4e2362ea355f590922126b4b8cbf68428`. Public placeholders remain unconfigured for deployment. This maintenance update changes the public candidate only; it does not deploy a service, update the installed plugin, merge this branch, or merge the earlier [v0.3.1 review PR](https://github.com/cyuanxv/openrouter-chatgpt-plugin/pull/1).
 
 ## What it does
 
@@ -159,3 +165,4 @@ The plugin connects to:
 Apache-2.0.
 
 This is an independent open-source project and is not affiliated with or endorsed by OpenRouter.
+
