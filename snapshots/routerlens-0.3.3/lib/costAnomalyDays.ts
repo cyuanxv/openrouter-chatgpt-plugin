@@ -5,9 +5,11 @@ import { parseExactHour, queryExactRange, validateExactHourlyRows } from "./exac
 import type { AnalyticsQuery } from "./openrouter";
 import { addCalendarDays, dateStringInZone, startOfDayUtc } from "./time";
 
+import { reconcileSparseHours } from "./sparseHourCoverage";
+
 const HOUR = 3_600_000;
 type Range = { start: string; end: string; startDate: string; endDateExclusive: string; timeZone: string };
-export type AnomalyOptions = { timezone: string; days?: number; baseline_days: number; ratio_threshold: number; absolute_threshold_usd: number };
+export type AnomalyOptions = { timezone: string; days?: number; baseline_days: number; ratio_threshold: number; absolute_threshold_usd: number; reconcile_sparse_days?: boolean };
 
 function calendarRange(startDate: string, endDateExclusive: string, timeZone: string): Range {
   return { start: startOfDayUtc(startDate, timeZone).toISOString(), end: startOfDayUtc(endDateExclusive, timeZone).toISOString(), startDate, endDateExclusive, timeZone };
@@ -36,15 +38,24 @@ export async function queryAnomalyDays(input: AnomalyOptions, run: (query: Analy
     limit: local ? 10_000 : ranges.days + input.baseline_days + 10,
     ...(local ? { group_limit: 10_000 } : {})
   };
-  // Exactly one upstream read. Its existing request timeout/error policy applies.
+  // Start with the exact-range read; sparse coverage may need independent controls.
   const response = await queryExactRange(query, run, metric => metric === "total_usage");
   requireCompleteAnalytics(response);
   const raw = local ? validateExactHourlyRows(query, response) : unwrapAnalyticsRows(response);
   const metadata = analyticsMetadata(response)!;
   if (metadata.row_count !== undefined && requiredNumber(metadata.row_count) !== raw.length) throw new PublicError("INVALID_RESPONSE");
+  let upstreamQueryCount = 1;
+  let reconciliation: Awaited<ReturnType<typeof reconcileSparseHours>>['evidence'] | null = null;
+  let covered = raw;
+  if (local && input.reconcile_sparse_days === true && raw.length < (Date.parse(queryRange.end) - Date.parse(queryRange.start)) / HOUR) {
+    const result = await reconcileSparseHours(raw, queryRange.start, queryRange.end, run, now);
+    covered = result.rows;
+    upstreamQueryCount += result.queryCount;
+    reconciliation = result.evidence;
+  }
   const byDate = new Map<string, unknown[]>();
   const seenDays = new Set<string>();
-  for (const row of raw) {
+  for (const row of covered) {
     // The query has no dimensions. Unexpected model/provider splits cannot be
     // mistaken for account-wide hourly coverage or summed twice.
     const bucket = local ? "date__hour" : "date__day";
@@ -80,5 +91,5 @@ export async function queryAnomalyDays(input: AnomalyOptions, run: (query: Analy
       else rows.push({ date__day: date, total_usage: total, total_usage_decimal: `${exact.coefficient}e-${exact.scale}` });
     } else unknownDays.push({ date, reason: "missing_bucket_coverage", observed_buckets: values.length, expected_buckets: expected });
   }
-  return { ...ranges, rows, unknownDays, aggregationMethod: local ? "sum_verified_24_hour_local_days" : "upstream_utc_day_buckets", upstreamRows: raw.length };
+  return { ...ranges, rows, unknownDays, aggregationMethod: local ? "sum_verified_24_hour_local_days" : "upstream_utc_day_buckets", upstreamRows: raw.length, upstreamQueryCount, reconciliation };
 }

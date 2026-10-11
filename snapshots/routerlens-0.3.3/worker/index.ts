@@ -58,7 +58,7 @@ export default {
       const calls=messages.filter(message=>message.method==='tools/call');
       if(calls.length&&!owner(request))return reply(403,'owner_required');
       if(calls.some(message=>message.params?.name!=='routerlens_status'&&message.params?.name!=='compare_models')&&!env.OPENROUTER_MANAGEMENT_KEY)return reply(503,'management_key_not_configured');
-      const server=new McpServer({name:'RouterLens Private Billing',version:'0.4.0'});
+      const server=new McpServer({name:'RouterLens Private Billing',version:'0.4.1'});
       const transport=new WebStandardStreamableHTTPServerTransport({sessionIdGenerator:undefined,enableJsonResponse:true});
       // The explicit client prevents the original module's environment fallback.
       const client=makeReadClient(env.OPENROUTER_MANAGEMENT_KEY);

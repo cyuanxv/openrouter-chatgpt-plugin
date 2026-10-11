@@ -294,13 +294,14 @@ export function registerRouterLensTools(server: any, client: RouterLensToolClien
     {
       title: "Detect OpenRouter cost anomalies",
       description:
-        "Detect spend spikes over completed UTC or Asia/Shanghai days against a consecutive-day baseline. Shanghai requires every hourly bucket, excludes incomplete days, and limits analysis plus baseline to 31 days. Other timezones are unsupported.",
+        "Detect spend spikes over completed UTC or Asia/Shanghai days against a consecutive-day baseline. Shanghai verifies sparse hours against independent UTC day cost and request controls, excludes unresolved days, and limits analysis plus baseline to 31 days. Other timezones are unsupported.",
       inputSchema: {
         days: z.number().int().min(1).max(90).optional().describe("Defaults to 30 for UTC, 7 for Asia/Shanghai. Shanghai days plus baseline_days must be at most 31."),
         timezone: TIMEZONE,
         baseline_days: z.number().int().min(3).max(30).default(7),
         ratio_threshold: z.number().min(1).max(10).default(1.5),
-        absolute_threshold_usd: z.number().min(0).default(1)
+        absolute_threshold_usd: z.number().min(0).default(1),
+        reconcile_sparse_days: z.boolean().default(true).describe("Verify sparse Shanghai hours against independent complete UTC day totals. Set false for strict explicit-bucket auditing.")
       },
       annotations: {
         readOnlyHint: true,
@@ -310,7 +311,7 @@ export function registerRouterLensTools(server: any, client: RouterLensToolClien
     },
     async (input: any) => {
       try {
-        const { targetRange, queryRange, rows, unknownDays, aggregationMethod, upstreamRows } = await queryAnomalyDays(input, queryAnalytics);
+        const { targetRange, queryRange, rows, unknownDays, aggregationMethod, upstreamRows, upstreamQueryCount, reconciliation } = await queryAnomalyDays(input, queryAnalytics);
         const analysis = analyzeCostSeries(
           rows,
           "total_usage",
@@ -338,11 +339,12 @@ export function registerRouterLensTools(server: any, client: RouterLensToolClien
             time_bucket_timezone: input.timezone,
             upstream_bucket_timezone: "UTC",
             aggregation_method: aggregationMethod,
-            upstream_query_count: 1,
+            upstream_query_count: upstreamQueryCount,
+            sparse_hour_reconciliation: reconciliation,
             upstream_row_count: upstreamRows,
             query_range: queryRange,
             unknown_days: unknownDays,
-            coverage_policy: "Missing buckets are unknown; explicit full bucket coverage with zero spend is zero.",
+            coverage_policy: "Missing buckets remain unknown unless independent complete UTC day cost and request controls reconcile and the hour has no requests.",
             baseline_policy: "consecutive complete calendar days in the requested timezone; missing buckets are not assumed to be zero",
             evaluated_days: analysis.evaluatedDays,
             skipped_days: analysis.skippedDays,
@@ -627,7 +629,7 @@ export function registerRouterLensTools(server: any, client: RouterLensToolClien
           ...status,
           account_analytics_available: null,
           connectivity_verified: false,
-          version: "0.4.0"
+          version: "0.4.1"
         }
       );
     }
