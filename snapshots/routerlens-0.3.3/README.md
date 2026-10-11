@@ -1,6 +1,6 @@
-# RouterLens 0.4.1 public Worker candidate
+# RouterLens 0.4.2 public Worker candidate
 
-Owner-private Sites MCP adapter and personal operations workspace. Service release 0.4.1 retains the eight reviewed analytics tools and adds twelve request, report and experiment operations. Source tool/analysis logic is reused from `cyuanxv/openrouter-chatgpt-plugin` commit `35f0c1349b28d29cd24db8272c3d3344fea99b04`; original Apache-2.0 license is retained.
+Owner-private Sites MCP adapter and personal operations workspace. Service release 0.4.2 retains the eight reviewed analytics tools and adds twelve request, report and experiment operations. Source tool/analysis logic is reused from `cyuanxv/openrouter-chatgpt-plugin` commit `35f0c1349b28d29cd24db8272c3d3344fea99b04`; original Apache-2.0 license is retained.
 
 Build: `npm run build`; test the built Worker with `npm test`; validate with `npm run validate`. Output is `dist/server/index.js` and `dist/.openai/hosting.json`.
 
@@ -36,7 +36,7 @@ Scheduled workflow: every Monday 09:00 Asia/Shanghai generate a weekly report; d
 
 `npm run build`, `npm test`, and `npm run validate` verify the artifact and synthetic scenarios. `scripts/build.sh` delegates to the same build pipeline from any working directory. Synthetic tests do not prove live account or notification access; record production receipts separately.
 
-This sanitized source snapshot is based on private source `7f552f82e0d6a0e6d5892f3ad63efa4290ed4dd6`. Replace identity, origin, Site project and Telegram destination placeholders before your own deployment. The historical directory name is retained. This is separate from the legacy root application.
+This sanitized source snapshot is based on private source `45e0cf38ca05be874a9d9b41d94adf610871d996`. Replace identity, origin, Site project and Telegram destination placeholders before your own deployment. The historical directory name is retained. This is separate from the legacy root application.
 
 ## Release 0.4.1: reconcile sparse hourly coverage
 
@@ -45,3 +45,9 @@ This sanitized source snapshot is based on private source `7f552f82e0d6a0e6d5892
 Missing daily controls, mismatched totals, changed snapshots, truncated/warned/invalid control responses, negative controls, request-only hours and the current unfinished UTC day remain unknown. This is reconciliation evidence from the analytics API, not independent invoice certification. Existing explicit complete-hour behavior is preserved. Set `reconcile_sparse_days=false` to retain strict explicit-bucket auditing.
 
 A sparse request normally needs five upstream reads; a maximum 31-local-day window uses nine because the enclosing 32 UTC days are split into bounded chunks. `upstream_query_count` and `sparse_hour_reconciliation` expose attempted reads, verified UTC dates, filled-hour count and rejected controls. Auxiliary failure preserves original known days and unknown coverage. Scheduled reports inherit the default. Previously saved reports and Telegram delivery receipts are immutable and are not resent by this fix.
+
+## Release 0.4.2: automatic anomaly attribution
+
+The read-only `explain_cost_anomaly` operation explains a completed date against the preceding 7 complete calendar days by default (3–30 supported). Exact hourly account and model reads must reconcile cost in decimal arithmetic and request/input/output counts. The response ranks model cost increases, compares requests and tokens per request, and separates volume from unit-cost change arithmetically. Application labels for the leading positive model are shown only when filtered application controls reconcile. Labels are not unique IDs; observed contributions do not prove user intent, retries or historic price changes. Truncation, warnings, negatives, unknown fields, empty controls and mismatches cannot produce a complete explanation.
+
+The dashboard adds an explicit anomaly explanation action. New weekly/daily reports automatically attach attribution for up to three largest anomaly candidates, using each candidate date and its own preceding baseline. An attribution failure leaves the original anomaly visible. Historical saved reports and delivery receipts remain immutable; this release sends no messages by itself. Telegram text is bounded; full structured evidence remains in the saved report. Twenty-one tools are exposed. No new database migration, paid inference, routing change or access-policy change is included.

@@ -629,7 +629,7 @@ export function registerRouterLensTools(server: any, client: RouterLensToolClien
           ...status,
           account_analytics_available: null,
           connectivity_verified: false,
-          version: "0.4.1"
+          version: "0.4.2"
         }
       );
     }
